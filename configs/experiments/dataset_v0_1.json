@@ -1,0 +1,24 @@
+{
+  "experiment_id": "dataset_v0_1",
+  "prompt_sources": ["prompts/hand_authored.jsonl"],
+  "providers": {
+    "openai": {
+      "models": ["gpt-5.6-luna", "gpt-5.6-sol"],
+      "efforts": ["low", "high"],
+      "max_output_tokens": 4096
+    },
+    "anthropic": {
+      "models": ["claude-fable-5", "claude-sonnet-5"],
+      "efforts": ["auto"],
+      "max_output_tokens": 4096
+    }
+  },
+  "repetitions": 1,
+  "sample_models_per_prompt": 2,
+  "max_requests": 1800,
+  "seed": 1729,
+  "metadata": {
+    "target_prompt_families": 900,
+    "note": "The checked-in prompt bank is a seed corpus. Expand/review to 900 families before executing this full experiment. Repeated-run augmentation is a separate stratified batch."
+  }
+}

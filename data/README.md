@@ -1,25 +1,15 @@
 # Data
 
-Dataset contents are intentionally not committed yet.
+Generated raw and model-ready datasets are gitignored. The repository commits schemas, experiment configs, a reviewed seed prompt bank, tests, and a small CSV preview.
 
-See the canonical implementation guide:
+- `raw/`: immutable JSONL observations
+- `manifests/`: planned runs
+- `normalized/`: provider-normalized Parquet
+- `features/`: leakage-safe feature matrices + targets
+- `splits/`: prompt-family split assignments
+- `profiles/`: dataset health reports
+- `releases/`: frozen versioned train/validation/calibration/test datasets
+- `quarantine/`: anomalous observations retained for inspection
+- `records.csv`: human-readable preview generated from canonical records
 
-- [Dataset Creation Workflow](../docs/DATASET_CREATION_WORKFLOW.md)
-
-Planned lifecycle:
-
-- `raw/`: immutable source observations
-- `manifests/`: explicit planned experiment runs
-- `normalized/`: validated and provider-normalized observations
-- `features/`: request-time feature matrices and targets
-- `splits/`: train/validation/test/calibration assignments
-- `releases/`: frozen versioned datasets
-- `quarantine/`: anomalous or invalid observations retained for inspection
-
-Raw and derived data directories are ignored by Git by default. Dataset schemas,
-experiment configs, small synthetic fixtures, release manifests, and summary
-statistics should be version-controlled separately.
-
-The first milestone is to take ~50 prompts, execute ~400 controlled provider calls,
-and reproducibly produce versioned train, validation, test, and calibration Parquet
-files without manually editing any observation.
+Do not manually edit CSV rows and use them as training truth.

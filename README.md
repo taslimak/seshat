@@ -1,68 +1,67 @@
 # Seshat
 
-Seshat is a token-usage prediction service for AI prompts. The initial goal is to estimate likely output-token usage before a request is sent, return a confidence interval, and learn from prediction error after actual usage is observed.
+Seshat is a token-usage prediction service for AI prompts. It estimates likely output-token usage before a request is sent, returns a confidence interval, and learns from prediction error after actual usage is observed.
 
-## Initial scope
+## Implemented vertical slices
 
-The starter implementation provides:
+1. FastAPI prediction service with the existing baseline predictor.
+2. Controlled-experiment data factory for reproducible training/evaluation data.
 
-- a Python package under `src/seshat`
-- deterministic prompt feature extraction
-- a baseline prediction interface that can later be replaced by a trained model
-- a FastAPI service with health and prediction endpoints
-- tests for the feature and API layers
-- a reproducible Python environment
-- GitHub Actions for linting and tests
+The data path is:
+
+```text
+prompt bank
+-> experiment manifest
+-> provider adapter
+-> immutable JSONL observations
+-> normalized Parquet
+-> quality validation
+-> leakage-safe feature matrix
+-> prompt-family grouped splits
+-> versioned release
+```
 
 ## Quick start
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -e ".[dev]"
+pip install -e ".[dev,data]"
 uvicorn seshat.api:app --reload
 ```
 
-Then open `http://127.0.0.1:8000/docs`.
-
-## Test
+For paid provider experiments:
 
 ```bash
-pytest
-ruff check .
+pip install -e ".[providers]"
 ```
 
-## Project layout
+Set `OPENAI_API_KEY` and/or `ANTHROPIC_API_KEY` in your environment. Never commit keys.
 
-```text
-src/seshat/
-  api.py          # HTTP interface
-  features.py     # prompt feature extraction
-  predictor.py    # baseline predictor contract/implementation
-  schemas.py      # request/response models
-tests/
-  test_api.py
-  test_features.py
+## Run the complete data factory without API spend
+
+```bash
+seshat-data build-manifest --config configs/experiments/pilot_001.json --output data/manifests/pilot_001.parquet
+seshat-data run --manifest data/manifests/pilot_001.parquet --prompts prompts/hand_authored.jsonl --output data/raw/pilot_001.jsonl
+seshat-data normalize --input data/raw/pilot_001.jsonl --output data/normalized/pilot_001.parquet
+seshat-data validate --input data/normalized/pilot_001.parquet --output data/normalized/pilot_001.validated.parquet
+seshat-data features --input data/normalized/pilot_001.validated.parquet --output data/features/pilot_001.parquet
+seshat-data split --input data/features/pilot_001.parquet --output data/splits/pilot_001.parquet
+seshat-data profile --input data/normalized/pilot_001.validated.parquet --output data/profiles/pilot_001.json
+seshat-data release --features data/features/pilot_001.parquet --splits data/splits/pilot_001.parquet --version 0.0.1
+seshat-data export-csv --input data/normalized/pilot_001.validated.parquet --output data/records.csv --limit 100
 ```
 
-## Dataset workflow
+`data/records.csv` is a human-readable view. Parquet/JSONL remain canonical.
 
-The dataset pipeline is documented in:
+## Dataset invariants
 
-- [Dataset Creation Workflow](docs/DATASET_CREATION_WORKFLOW.md)
-- [Data directory guide](data/README.md)
+- Raw observations are append-only.
+- Provider-native usage payloads are preserved.
+- Post-inference fields cannot enter training features.
+- Repeats and prompt-family variants stay in the same split.
+- Truncated outputs are marked as censored.
+- Customer telemetry does not automatically become training data.
+- Protected test data is not used for iterative tuning.
 
-The first data milestone is a controlled experiment pipeline that turns ~50 prompts
-and ~400 provider calls into versioned train/validation/test/calibration Parquet
-datasets without manual row editing.
-
-## Near-term roadmap
-
-1. Define and freeze the training-event schema.
-2. Build the dataset ingestion and experiment pipeline.
-3. Produce Dataset v0.0.1 from controlled provider runs.
-4. Establish a simple statistical baseline.
-5. Add model-family and effort-level calibration.
-6. Train and compare candidate regressors.
-7. Add residual correction and confidence calibration.
-8. Version models and expose evaluation metrics.
+See [Dataset Creation Workflow](docs/DATASET_CREATION_WORKFLOW.md) and [Dataset Implementation](docs/DATASET_IMPLEMENTATION.md).

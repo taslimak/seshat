@@ -1,0 +1,17 @@
+{
+  "experiment_id": "pilot_openai_001",
+  "prompt_sources": ["prompts/hand_authored.jsonl"],
+  "providers": {
+    "openai": {
+      "models": ["gpt-5.6-luna"],
+      "efforts": ["low", "high"],
+      "max_output_tokens": 2048
+    }
+  },
+  "repetitions": 1,
+  "max_requests": 72,
+  "seed": 1729,
+  "metadata": {
+    "purpose": "First paid-provider smoke test. Review estimated spend before execution."
+  }
+}
