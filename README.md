@@ -45,12 +45,24 @@ tests/
   test_features.py
 ```
 
+## Dataset workflow
+
+The dataset pipeline is documented in:
+
+- [Dataset Creation Workflow](docs/DATASET_CREATION_WORKFLOW.md)
+- [Data directory guide](data/README.md)
+
+The first data milestone is a controlled experiment pipeline that turns ~50 prompts
+and ~400 provider calls into versioned train/validation/test/calibration Parquet
+datasets without manual row editing.
+
 ## Near-term roadmap
 
 1. Define and freeze the training-event schema.
-2. Build the dataset ingestion pipeline.
-3. Establish a simple statistical baseline.
-4. Add model-family and effort-level calibration.
-5. Train and compare candidate regressors.
-6. Add residual correction and confidence calibration.
-7. Version models and expose evaluation metrics.
+2. Build the dataset ingestion and experiment pipeline.
+3. Produce Dataset v0.0.1 from controlled provider runs.
+4. Establish a simple statistical baseline.
+5. Add model-family and effort-level calibration.
+6. Train and compare candidate regressors.
+7. Add residual correction and confidence calibration.
+8. Version models and expose evaluation metrics.
