@@ -1,6 +1,9 @@
 """FastAPI entrypoint for Seshat."""
 
+from pathlib import Path
+
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
 
 from seshat.predictor import BaselinePredictor
 from seshat.schemas import PredictionRequest, PredictionResponse
@@ -12,6 +15,12 @@ app = FastAPI(
 )
 
 predictor = BaselinePredictor()
+_UI_PATH = Path(__file__).with_name("static") / "index.html"
+
+
+@app.get("/", include_in_schema=False)
+def demo_ui() -> FileResponse:
+    return FileResponse(_UI_PATH)
 
 
 @app.get("/health")
