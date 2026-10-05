@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Seshat — Token Usage Predictor</title>
+  <style>
+    :root{
+      --bg:#0b0d12;--panel:#121620;--panel2:#171c28;--line:#252b39;
+      --text:#eef2f7;--muted:#8e98aa;--accent:#d6ff63;--good:#68d391;--danger:#ff8a8a;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:radial-gradient(circle at 20% 0%,#17201a 0,transparent 28%),var(--bg);color:var(--text);min-height:100vh}
+    .shell{max-width:1120px;margin:0 auto;padding:28px}
+    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:26px}
+    .brand{display:flex;align-items:center;gap:12px;font-weight:800}
+    .mark{width:34px;height:34px;border-radius:10px;background:var(--accent);color:#111;display:grid;place-items:center;font-weight:900}
+    .badge{font-size:12px;color:var(--accent);border:1px solid #40521e;background:#19220d;padding:6px 9px;border-radius:999px}
+    .hero h1{font-size:34px;line-height:1.1;margin:0 0 8px}
+    .hero p{color:var(--muted);margin:0 0 24px;max-width:720px}
+    .grid{display:grid;grid-template-columns:1.05fr .95fr;gap:18px}
+    .card{background:linear-gradient(180deg,var(--panel),#10141c);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 12px 35px rgba(0,0,0,.22)}
+    .card h2{font-size:15px;margin:0 0 14px;color:#cfd6e3}
+    label{display:block;color:var(--muted);font-size:12px;margin-bottom:7px}
+    textarea,select{width:100%;background:#0d1118;color:var(--text);border:1px solid #2a3140;border-radius:10px;padding:11px 12px;outline:none;font:inherit}
+    textarea{height:215px;resize:vertical;line-height:1.45}
+    textarea:focus,select:focus{border-color:#708f2e;box-shadow:0 0 0 3px rgba(214,255,99,.06)}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+    .actions{display:flex;gap:10px;align-items:center;margin-top:14px}
+    button{border:0;border-radius:10px;padding:11px 15px;font-weight:750;cursor:pointer}
+    button:disabled{cursor:not-allowed;opacity:.55}
+    .primary{background:var(--accent);color:#111}
+    .secondary{background:#202633;color:#d9e0eb}
+    .fine{font-size:11px;color:#697386;margin-left:auto}
+    .result-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+    .big{font-size:52px;font-weight:850;letter-spacing:-2px;margin:8px 0 0}
+    .unit{font-size:14px;color:var(--muted);letter-spacing:0}
+    .confidence{padding:7px 9px;border-radius:9px;background:#122117;color:var(--good);font-size:12px;border:1px solid #22432d;white-space:nowrap}
+    .range{color:var(--muted);font-size:13px;margin-top:4px}
+    .split{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}
+    .metric{background:var(--panel2);border:1px solid var(--line);padding:13px;border-radius:12px}
+    .metric .k{color:var(--muted);font-size:11px}.metric .v{font-size:20px;font-weight:750;margin-top:4px}
+    .explain{margin-top:18px;border-top:1px solid var(--line);padding-top:16px}
+    .chips{display:flex;flex-wrap:wrap;gap:7px}
+    .chip{font-size:11px;background:#1b2230;border:1px solid #2d3545;color:#b9c3d2;border-radius:999px;padding:6px 8px}
+    .section{margin-top:18px}
+    table{width:100%;border-collapse:collapse;font-size:12px}
+    th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line)}
+    th{color:var(--muted);font-weight:600}td strong{font-size:14px}
+    .status{margin-top:14px;padding:10px 12px;border-radius:10px;font-size:12px;background:#101620;border:1px solid var(--line);color:var(--muted)}
+    .status.error{color:var(--danger);border-color:#563535;background:#211313}
+    .foot{margin-top:16px;color:#687184;font-size:11px}
+    .dot{width:7px;height:7px;border-radius:50%;background:var(--good);display:inline-block;margin-right:6px}
+    @media(max-width:850px){.grid{grid-template-columns:1fr}.row{grid-template-columns:1fr}.shell{padding:18px}.big{font-size:42px}}
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div class="brand"><div class="mark">S</div><div>SESHAT</div></div>
+      <div class="badge">Live baseline</div>
+    </header>
+
+    <section class="hero">
+      <h1>Know likely output usage <em>before</em> you send.</h1>
+      <p>This interface is connected to Seshat's current FastAPI predictor. The values below come from the repository's baseline model, not a browser-side mock.</p>
+    </section>
+
+    <div class="grid">
+      <section class="card">
+        <h2>Prediction input</h2>
+        <label for="prompt">Prompt</label>
+        <textarea id="prompt">Analyze this customer churn dataset, identify the strongest predictors of cancellation, explain the statistical significance of the top features, and propose three retention experiments with measurable success criteria.</textarea>
+
+        <div class="row">
+          <div>
+            <label for="model">Model identifier</label>
+            <select id="model">
+              <option value="gpt-5.6">GPT-5.6</option>
+              <option value="gpt-6">GPT-6</option>
+              <option value="claude">Claude-class</option>
+              <option value="gemini">Gemini-class</option>
+            </select>
+          </div>
+          <div>
+            <label for="effort">Reasoning effort</label>
+            <select id="effort">
+              <option value="auto">Auto</option>
+              <option value="low">Low</option>
+              <option value="medium" selected>Medium</option>
+              <option value="high">High</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="predictButton" class="primary" onclick="predict()">Predict usage</button>
+          <button class="secondary" onclick="loadExample()">Try example</button>
+          <span class="fine"><span class="dot"></span><span id="apiState">API connected</span></span>
+        </div>
+
+        <div id="status" class="status">Ready. Predictions are served by <code>/v1/predict</code>.</div>
+
+        <div class="section">
+          <h2>Effort comparison</h2>
+          <table>
+            <thead><tr><th>Model</th><th>Effort</th><th>Output tokens</th><th>vs selected</th></tr></thead>
+            <tbody id="comparison"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <aside class="card">
+        <div class="result-head">
+          <div>
+            <h2 style="margin-bottom:0">Predicted output usage</h2>
+            <div class="big" id="total">— <span class="unit">tokens</span></div>
+            <div class="range" id="range">Prediction interval: —</div>
+          </div>
+          <div class="confidence" id="confidence">— confidence</div>
+        </div>
+
+        <div class="split">
+          <div class="metric"><div class="k">Lower bound</div><div class="v" id="lower">—</div></div>
+          <div class="metric"><div class="k">Upper bound</div><div class="v" id="upper">—</div></div>
+        </div>
+
+        <div class="explain">
+          <h2>Prediction context</h2>
+          <div class="chips" id="chips">
+            <span class="chip">waiting for prediction</span>
+          </div>
+        </div>
+
+        <div class="explain">
+          <h2>What this demo proves today</h2>
+          <div class="foot">
+            The UI is using the same API contract as any future browser extension, IDE integration, SDK, or chatbot overlay. As the statistical model improves, the interface does not need to change.
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+<script>
+const efforts = ["auto","low","medium","high"];
+const examples = [
+  "Write a concise Python function that validates an email address and explain two edge cases.",
+  "Compare three approaches to forecasting weekly demand with intermittent sales. Include assumptions, failure modes, evaluation metrics, and a recommendation.",
+  "Summarize this contract, extract obligations for each party, flag ambiguous clauses, and create a risk table with severity and suggested mitigation."
+];
+
+function pretty(n){ return Number(n).toLocaleString(); }
+
+async function requestPrediction(prompt, model, effort){
+  const response = await fetch("/v1/predict", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({prompt, model, effort})
+  });
+  if(!response.ok){
+    let message = "Prediction request failed";
+    try {
+      const body = await response.json();
+      message = body.detail ? JSON.stringify(body.detail) : message;
+    } catch (_) {}
+    throw new Error(message + " (" + response.status + ")");
+  }
+  return response.json();
+}
+
+async function predict(){
+  const prompt = document.getElementById("prompt").value.trim();
+  const model = document.getElementById("model").value;
+  const effort = document.getElementById("effort").value;
+  const button = document.getElementById("predictButton");
+  const status = document.getElementById("status");
+
+  if(!prompt){
+    status.className="status error";
+    status.textContent="Enter a prompt before predicting.";
+    return;
+  }
+
+  button.disabled=true;
+  status.className="status";
+  status.textContent="Running Seshat baseline predictor…";
+
+  try {
+    const selected = await requestPrediction(prompt, model, effort);
+    renderSelected(selected, model, effort);
+
+    const rows = await Promise.all(efforts.map(async e => [e, await requestPrediction(prompt, model, e)]));
+    renderComparison(rows, selected.predicted_output_tokens, model);
+
+    status.className="status";
+    status.textContent="Prediction complete. Predictor version: " + selected.predictor_version;
+    document.getElementById("apiState").textContent="API connected";
+  } catch(error){
+    status.className="status error";
+    status.textContent=error.message;
+    document.getElementById("apiState").textContent="API error";
+  } finally {
+    button.disabled=false;
+  }
+}
+
+function renderSelected(r, model, effort){
+  document.getElementById("total").innerHTML = pretty(r.predicted_output_tokens) + ' <span class="unit">tokens</span>';
+  document.getElementById("range").textContent = "Prediction interval: " + pretty(r.lower_bound) + "–" + pretty(r.upper_bound);
+  document.getElementById("confidence").textContent = Math.round(r.confidence*100) + "% confidence";
+  document.getElementById("lower").textContent = pretty(r.lower_bound);
+  document.getElementById("upper").textContent = pretty(r.upper_bound);
+  document.getElementById("chips").innerHTML = [
+    model,
+    effort + " effort",
+    r.predictor_version,
+    "server-side prediction"
+  ].map(x => '<span class="chip">' + x + '</span>').join("");
+}
+
+function renderComparison(rows, selectedTotal, model){
+  document.getElementById("comparison").innerHTML = rows.map(([effort,r]) => {
+    const delta = Math.round((r.predicted_output_tokens/selectedTotal-1)*100);
+    const deltaText = delta === 0 ? "—" : (delta > 0 ? "+" : "") + delta + "%";
+    return '<tr><td>'+model+'</td><td>'+effort+'</td><td><strong>'+pretty(r.predicted_output_tokens)+'</strong></td><td>'+deltaText+'</td></tr>';
+  }).join("");
+}
+
+function loadExample(){
+  document.getElementById("prompt").value = examples[Math.floor(Math.random()*examples.length)];
+  predict();
+}
+
+predict();
+</script>
+</body>
+</html>

@@ -5,6 +5,13 @@ from seshat.api import app
 client = TestClient(app)
 
 
+def test_demo_ui() -> None:
+    response = client.get("/")
+    assert response.status_code == 200
+    assert "SESHAT" in response.text
+    assert "/v1/predict" in response.text
+
+
 def test_health() -> None:
     response = client.get("/health")
     assert response.status_code == 200
