@@ -5,7 +5,7 @@ from pathlib import Path
 from collections.abc import Callable
 
 from seshat.data.collectors.collector import Collector
-from seshat.data.collectors.control import Budget
+from seshat.data.collectors.control import Budget, SharedBudgetLedger
 from seshat.data.collectors.events import EventLog, EventType
 from seshat.data.generators import generate_prompts
 from seshat.experiments.config import CollectionConfig
@@ -57,3 +57,27 @@ def test_retryable_but_uncertain_error_is_not_retried(
         Path(config.storage.root) / "raw" / config.experiment_id / "events.jsonl"
     ).read()
     assert sum(e["event"] == EventType.DISPATCHED for e in events) == 1
+
+
+def test_shared_caps_apply_across_independent_experiments(tmp_path: Path) -> None:
+    ledger_file = tmp_path / "persistent" / "spend.sqlite3"
+    first = Budget(
+        max_requests=10, max_cost_usd=Decimal("10"),
+        shared_ledger=SharedBudgetLedger(
+            ledger_file, daily_cap_usd=Decimal("0.20"),
+            monthly_cap_usd=Decimal("0.30"),
+        ),
+    )
+    second = Budget(
+        max_requests=10, max_cost_usd=Decimal("10"),
+        shared_ledger=SharedBudgetLedger(
+            ledger_file, daily_cap_usd=Decimal("0.20"),
+            monthly_cap_usd=Decimal("0.30"),
+        ),
+    )
+    assert first.try_reserve(Decimal("0.15")) is None
+    assert second.try_reserve(Decimal("0.10")) == "shared_cost_cap_reached"
+    first.settle(Decimal("0.15"), Decimal("0.15"))
+    assert second.try_reserve(Decimal("0.05")) is None
+    second.release(Decimal("0.05"))
+    assert second.try_reserve(Decimal("0.05")) is None
