@@ -3,12 +3,18 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import ClassVar
 
 from seshat.data.models import EffortLevel, ProviderResult
+from seshat.data.provenance import DataOrigin
 
 
 class ProviderAdapter(ABC):
     name: str
+    #: Whether results are observed from a real provider or generated locally.
+    data_origin: ClassVar[DataOrigin] = DataOrigin.REAL
+    #: Whether ``execute`` sends network requests that may incur provider charges.
+    makes_external_calls: ClassVar[bool] = True
 
     @abstractmethod
     def execute(

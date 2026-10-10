@@ -15,6 +15,13 @@ def test_prompt_requires_stable_family_id() -> None:
         )
 
 
-def test_usage_rejects_impossible_total() -> None:
+def test_usage_preserves_impossible_total_for_downstream_quarantine() -> None:
+    # Cross-field plausibility is a data-quality rule (seshat.data.validate), not a
+    # parse error, so anomalous provider usage is kept and quarantined, not lost.
+    usage = NormalizedUsage(input_tokens=100, output_tokens=50, total_tokens=120)
+    assert usage.total_tokens == 120
+
+
+def test_usage_rejects_negative_counts() -> None:
     with pytest.raises(ValidationError):
-        NormalizedUsage(input_tokens=100, output_tokens=50, total_tokens=120)
+        NormalizedUsage(output_tokens=-1)

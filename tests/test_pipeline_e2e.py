@@ -1,5 +1,6 @@
 """End-to-end mock run of the data factory, mirroring the CI smoke test."""
 
+import json
 from pathlib import Path
 
 import pandas as pd
@@ -25,7 +26,12 @@ def test_mock_pilot_produces_a_complete_release(tmp_path: Path) -> None:
         ["run", "--manifest", str(manifest), "--prompts", str(PROMPTS), "--output", str(raw)],
         ["normalize", "--input", str(raw), "--output", str(normalized)],
         ["validate", "--input", str(normalized), "--output", str(validated)],
-        ["features", "--input", str(validated), "--output", str(features)],
+        [
+            "features",
+            "--input", str(validated),
+            "--output", str(features),
+            "--label-origin", "synthetic",
+        ],
         ["split", "--input", str(features), "--output", str(splits)],
         [
             "release",
@@ -42,11 +48,18 @@ def test_mock_pilot_produces_a_complete_release(tmp_path: Path) -> None:
     assert (decisions == "PASS").all(), decisions.value_counts().to_dict()
     assert len(pd.read_parquet(features)) == len(decisions) == 144
 
-    release_dir = releases / "dataset_vtest"
+    assert (pd.read_parquet(features)["label_origin"] == "synthetic").all()
+    # Mock outcomes are synthetic: the default (real-label) build must refuse them.
+    refused = ["features", "--input", str(validated), "--output", str(tmp_path / "x.parquet")]
+    assert main(refused) == 2
+
+    release_dir = releases / "dataset_vtest_synthetic"
     family_splits: dict[str, str] = {}
     for split_name in ("train", "validation", "calibration", "test"):
         frame = pd.read_parquet(release_dir / f"{split_name}.parquet")
         assert not frame.empty, f"{split_name} split is empty"
         for family_id in frame["prompt_family_id"].unique():
             assert family_splits.setdefault(family_id, split_name) == split_name
-    assert (release_dir / "manifest.json").exists()
+    manifest = json.loads((release_dir / "manifest.json").read_text())
+    assert manifest["label_origin"] == "synthetic"
+    assert manifest["source_experiments"] == ["pilot_001"]

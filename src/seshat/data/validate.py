@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 
 import pandas as pd
 
@@ -22,9 +23,37 @@ def _max_decision(flags: list[QualityFlag]) -> QualityDecision:
     return max((flag.severity for flag in flags), key=_DECISION_RANK.__getitem__)
 
 
-def validate_row(row: pd.Series) -> list[QualityFlag]:
+#: Required identifiers for controlled-experiment rows (``normalize`` output).
+EXPERIMENT_REQUIRED_FIELDS: tuple[str, ...] = (
+    "observation_id",
+    "run_id",
+    "provider",
+    "model_requested",
+    "prompt_id",
+)
+#: Required identifiers for stored ``ObservedUsageRecord`` rows.
+OBSERVED_USAGE_REQUIRED_FIELDS: tuple[str, ...] = (
+    "observation_id",
+    "request_id",
+    "provider",
+    "model_requested",
+)
+
+
+def validate_row(
+    row: pd.Series,
+    required_fields: Sequence[str] = EXPERIMENT_REQUIRED_FIELDS,
+) -> list[QualityFlag]:
     flags: list[QualityFlag] = []
-    for required in ("observation_id", "run_id", "provider", "model_requested", "prompt_id"):
+    if "data_origin" in row.index and pd.isna(row.get("data_origin")):
+        flags.append(
+            QualityFlag(
+                code="missing_provenance",
+                message="Record has no data_origin; real vs synthetic is unknown",
+                severity=QualityDecision.REJECT,
+            )
+        )
+    for required in required_fields:
         if pd.isna(row.get(required)) or str(row.get(required)).strip() == "":
             flags.append(
                 QualityFlag(
@@ -106,18 +135,27 @@ def validate_row(row: pd.Series) -> list[QualityFlag]:
     return flags
 
 
-def validate_dataframe(frame: pd.DataFrame) -> pd.DataFrame:
+def validate_dataframe(
+    frame: pd.DataFrame,
+    *,
+    required_fields: Sequence[str] = EXPERIMENT_REQUIRED_FIELDS,
+) -> pd.DataFrame:
+    """Add ``quality_decision`` and ``quality_flags`` columns to a usage table."""
     result = frame.copy()
     all_flags: list[str] = []
     decisions: list[str] = []
-    duplicate_runs = set(result.loc[result["run_id"].duplicated(keep=False), "run_id"].tolist())
+    duplicate_runs: set[str] = set()
+    if "run_id" in result.columns:
+        duplicate_runs = set(
+            result.loc[result["run_id"].duplicated(keep=False), "run_id"].tolist()
+        )
     request_ids = result.get("provider_request_id", pd.Series(index=result.index, dtype=object))
     duplicate_request_ids = set(
         request_ids[request_ids.notna() & request_ids.duplicated(keep=False)].tolist()
     )
     for _, row in result.iterrows():
-        flags = validate_row(row)
-        if row.get("run_id") in duplicate_runs:
+        flags = validate_row(row, required_fields)
+        if duplicate_runs and row.get("run_id") in duplicate_runs:
             flags.append(
                 QualityFlag(
                     code="duplicate_run_id",

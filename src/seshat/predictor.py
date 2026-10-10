@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from seshat.features import extract_prompt_features
+from seshat.features import PromptFeatures, extract_prompt_features
 
 
 @dataclass(frozen=True)
@@ -26,8 +26,15 @@ class BaselinePredictor:
     version = "baseline-0.1"
 
     def predict(self, prompt: str, model: str, effort: str) -> Prediction:
-        features = extract_prompt_features(prompt)
+        return self.predict_features(extract_prompt_features(prompt), model, effort)
 
+    def predict_features(self, features: PromptFeatures, model: str, effort: str) -> Prediction:
+        """Predict from precomputed request-time features (no prompt text needed).
+
+        Lets stored, privacy-safe ``RequestFeatureRecord`` rows be scored without
+        retaining the original prompt.
+        """
+        del model  # The heuristic baseline does not yet use the model identifier.
         effort_multiplier = {
             "low": 0.8,
             "medium": 1.0,

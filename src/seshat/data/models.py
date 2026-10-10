@@ -6,7 +6,9 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field
+
+from seshat.data.provenance import Provenance
 
 EffortLevel = Literal["auto", "none", "low", "medium", "high", "xhigh", "max"]
 
@@ -84,16 +86,10 @@ class NormalizedUsage(BaseModel):
     total_tokens: int | None = Field(default=None, ge=0)
     billable_tokens: int | None = Field(default=None, ge=0)
 
-    @model_validator(mode="after")
-    def totals_are_plausible(self) -> NormalizedUsage:
-        if (
-            self.total_tokens is not None
-            and self.input_tokens is not None
-            and self.output_tokens is not None
-            and self.total_tokens < self.input_tokens + self.output_tokens
-        ):
-            raise ValueError("total_tokens cannot be smaller than input_tokens + output_tokens")
-        return self
+    # Cross-field plausibility (e.g. total < input + output) is deliberately *not*
+    # enforced here. Rejecting at parse time would turn a provider anomaly into a
+    # failed run and lose the reported usage; ``seshat.data.validate`` flags it as
+    # QUARANTINE instead so the raw values are preserved for inspection.
 
 
 class ProviderResult(BaseModel):
@@ -139,6 +135,9 @@ class RawObservation(BaseModel):
     attempt_count: int = Field(default=1, ge=1)
     error_type: str | None = None
     error_message: str | None = None
+    # Optional for backward compatibility with raw files written before provenance
+    # existed; normalization infers it from the provider registry when absent.
+    provenance: Provenance | None = None
 
 
 class QualityFlag(BaseModel):
