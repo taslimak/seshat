@@ -4,19 +4,20 @@ from __future__ import annotations
 
 import hashlib
 import random
+from collections.abc import Sequence
 from pathlib import Path
 
 import pandas as pd
 
 from seshat.data.io import load_json, load_jsonl, write_parquet
-from seshat.data.models import ExperimentConfig, ManifestRow, PromptRecord
+from seshat.data.models import EffortLevel, ExperimentConfig, ManifestRow, PromptRecord
 
 
 def _hash_id(prefix: str, value: str, length: int = 20) -> str:
     return f"{prefix}_{hashlib.sha256(value.encode()).hexdigest()[:length]}"
 
 
-def load_prompts(paths: list[str | Path]) -> list[PromptRecord]:
+def load_prompts(paths: Sequence[str | Path]) -> list[PromptRecord]:
     prompts: list[PromptRecord] = []
     seen: set[str] = set()
     for path in paths:
@@ -31,7 +32,7 @@ def load_prompts(paths: list[str | Path]) -> list[PromptRecord]:
 def build_manifest(config: ExperimentConfig, prompts: list[PromptRecord]) -> pd.DataFrame:
     conditions: list[ManifestRow] = []
     rng = random.Random(config.seed)
-    provider_conditions: list[tuple[str, str, str, int, float | None]] = []
+    provider_conditions: list[tuple[str, str, EffortLevel, int, float | None]] = []
     for provider, provider_config in sorted(config.providers.items()):
         for model in provider_config.models:
             for effort in provider_config.efforts:

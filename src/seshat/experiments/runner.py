@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import hashlib
 import time
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Callable
 
 import pandas as pd
 

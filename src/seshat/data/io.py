@@ -5,8 +5,9 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable, TypeVar
+from typing import Any, TypeVar
 
 import pandas as pd
 from pydantic import BaseModel
@@ -44,8 +45,7 @@ def append_jsonl(path: str | Path, record: BaseModel | dict[str, Any]) -> None:
         payload = record
     line = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     with target.open("a", encoding="utf-8") as handle:
-        handle.write(line + "
-")
+        handle.write(line + "\n")
         handle.flush()
         os.fsync(handle.fileno())
 
@@ -55,8 +55,7 @@ def write_json(path: str | Path, payload: dict[str, Any]) -> None:
     target.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=target.parent, delete=False) as tmp:
         json.dump(payload, tmp, indent=2, sort_keys=True, ensure_ascii=False)
-        tmp.write("
-")
+        tmp.write("\n")
         tmp_path = Path(tmp.name)
     tmp_path.replace(target)
 
