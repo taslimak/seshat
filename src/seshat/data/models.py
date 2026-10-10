@@ -37,9 +37,13 @@ class PromptRecord(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+def _default_efforts() -> list[EffortLevel]:
+    return ["auto"]
+
+
 class ProviderExperimentConfig(BaseModel):
     models: list[str] = Field(min_length=1)
-    efforts: list[EffortLevel] = Field(default_factory=lambda: ["auto"])
+    efforts: list[EffortLevel] = Field(default_factory=_default_efforts)
     max_output_tokens: int = Field(default=2048, ge=1)
     temperature: float | None = Field(default=None, ge=0.0)
 
@@ -81,7 +85,7 @@ class NormalizedUsage(BaseModel):
     billable_tokens: int | None = Field(default=None, ge=0)
 
     @model_validator(mode="after")
-    def totals_are_plausible(self) -> "NormalizedUsage":
+    def totals_are_plausible(self) -> NormalizedUsage:
         if (
             self.total_tokens is not None
             and self.input_tokens is not None

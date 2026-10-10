@@ -1,8 +1,14 @@
-"""Deterministic local adapter for testing the entire data factory without API spend."""
+"""Deterministic local adapter for testing the entire data factory without API spend.
+
+Usage numbers are a deterministic function of the request. The provider request ID
+is unique per call, like a real provider's, so repeated identical requests are not
+mistaken for duplicated records by data-quality validation.
+"""
 
 from __future__ import annotations
 
 import hashlib
+import uuid
 
 from seshat.data.models import EffortLevel, NormalizedUsage, ProviderResult
 from seshat.providers.base import ProviderAdapter
@@ -28,7 +34,7 @@ class MockAdapter(ProviderAdapter):
         output_tokens = min(max_output_tokens, natural_output)
         input_tokens = max(1, round(len(prompt) / 4))
         return ProviderResult(
-            provider_request_id=f"mock_{hashlib.sha256(prompt.encode()).hexdigest()[:16]}",
+            provider_request_id=f"mock_{uuid.uuid4().hex}",
             model_resolved=model,
             usage=NormalizedUsage(
                 input_tokens=input_tokens,
