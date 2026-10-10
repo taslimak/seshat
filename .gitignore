@@ -14,10 +14,16 @@ venv/
 .env
 
 # Model/data artifacts
-artifacts/
+artifacts/*
+!artifacts/README.md
 data/raw/
-data/interim/
-data/processed/
+data/manifests/
+data/normalized/
+data/features/
+data/splits/
+data/releases/
+data/quarantine/
+data/profiles/
 *.joblib
 *.pkl
 
