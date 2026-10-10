@@ -444,14 +444,15 @@ class Collector:
                     )
                 except ProviderError as error:
                     failures_this_sample += 1
+                    # A retryable transport failure can still have been billed.
+                    # Uncertain outcomes always win over retryability.
                     retry = (
                         error.retryable
+                        and not error.outcome_uncertain
                         and failures_this_sample <= self.config.execution.max_retries
                     )
                     final = not retry
-                    if error.retryable:
-                        self.budget.release(estimate)
-                    elif error.outcome_uncertain:
+                    if error.outcome_uncertain:
                         self.budget.settle(estimate, None)
                     else:
                         self.budget.release(estimate)
