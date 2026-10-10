@@ -47,9 +47,7 @@ def test_retryable_but_uncertain_error_is_not_retried(
                 ErrorCategory.TIMEOUT, "provider might have completed this request"
             )
 
-    result = Collector(
-        config, plan, mode="offline", adapter_factory=lambda _: Doubtful()
-    ).run()
+    result = Collector(config, plan, mode="offline", adapter_factory=lambda _: Doubtful()).run()
     assert calls == 1
     assert result.dispatched_this_run == 1
     assert result.status_counts == {"uncertain": 1}
@@ -62,16 +60,20 @@ def test_retryable_but_uncertain_error_is_not_retried(
 def test_shared_caps_apply_across_independent_experiments(tmp_path: Path) -> None:
     ledger_file = tmp_path / "persistent" / "spend.sqlite3"
     first = Budget(
-        max_requests=10, max_cost_usd=Decimal("10"),
+        max_requests=10,
+        max_cost_usd=Decimal("10"),
         shared_ledger=SharedBudgetLedger(
-            ledger_file, daily_cap_usd=Decimal("0.20"),
+            ledger_file,
+            daily_cap_usd=Decimal("0.20"),
             monthly_cap_usd=Decimal("0.30"),
         ),
     )
     second = Budget(
-        max_requests=10, max_cost_usd=Decimal("10"),
+        max_requests=10,
+        max_cost_usd=Decimal("10"),
         shared_ledger=SharedBudgetLedger(
-            ledger_file, daily_cap_usd=Decimal("0.20"),
+            ledger_file,
+            daily_cap_usd=Decimal("0.20"),
             monthly_cap_usd=Decimal("0.30"),
         ),
     )
