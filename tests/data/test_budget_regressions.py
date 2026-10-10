@@ -34,15 +34,17 @@ def test_retryable_but_uncertain_error_is_not_retried(
     assert plan.samples
     calls = 0
 
+    class RetryableUncertain(ProviderError):
+        @property
+        def retryable(self) -> bool:
+            return True
+
     class Doubtful(MockOpenAIAdapter):
         def execute_request(self, request, *, timeout_seconds):  # type: ignore[no-untyped-def]
             nonlocal calls
             calls += 1
-            raise ProviderError(
-                ErrorCategory.TIMEOUT,
-                "provider might have completed this request",
-                outcome_uncertain=True,
-                retryable=True,
+            raise RetryableUncertain(
+                ErrorCategory.TIMEOUT, "provider might have completed this request"
             )
 
     result = Collector(
