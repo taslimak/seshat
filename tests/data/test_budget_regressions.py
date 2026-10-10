@@ -1,8 +1,8 @@
 """Regression tests for paid-request accounting and uncertain outcomes."""
 
+from collections.abc import Callable
 from decimal import Decimal
 from pathlib import Path
-from collections.abc import Callable
 
 from seshat.data.collectors.collector import Collector
 from seshat.data.collectors.control import Budget, SharedBudgetLedger
