@@ -21,6 +21,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import random
 import uuid
 from collections import Counter
@@ -31,7 +32,7 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any, Literal
 
-from seshat.data.collectors.control import Budget, RateLimiter
+from seshat.data.collectors.control import Budget, RateLimiter, SharedBudgetLedger
 from seshat.data.collectors.events import EventLog, EventType, SampleState, SampleStatus, replay
 from seshat.data.io import write_json, write_jsonl
 from seshat.data.pricing import PriceTable, compute_cost, max_cost_estimate
@@ -159,7 +160,28 @@ class Collector:
         cap = max_cost_usd if max_cost_usd is not None else config.budget.max_cost_usd
         if max_cost_usd is not None and config.budget.max_cost_usd is not None:
             cap = min(max_cost_usd, config.budget.max_cost_usd)
-        self.budget = Budget(max_requests=config.budget.max_requests, max_cost_usd=cap)
+        shared_ledger = None
+        ledger_path = os.environ.get("SESHAT_SHARED_LEDGER_PATH")
+        if mode == "live" and os.environ.get("SESHAT_UNATTENDED_COLLECTION") == "1":
+            if not ledger_path:
+                raise ValueError(
+                    "Unattended live collection requires durable SESHAT_SHARED_LEDGER_PATH"
+                )
+        if mode == "live" and ledger_path:
+            day_cap = os.environ.get("SESHAT_DAILY_COST_CAP_USD")
+            month_cap = os.environ.get("SESHAT_MONTHLY_COST_CAP_USD")
+            if not day_cap or not month_cap:
+                raise ValueError("Shared ledger requires daily and monthly cost caps")
+            shared_ledger = SharedBudgetLedger(
+                ledger_path,
+                daily_cap_usd=Decimal(day_cap),
+                monthly_cap_usd=Decimal(month_cap),
+            )
+        self.budget = Budget(
+            max_requests=config.budget.max_requests,
+            max_cost_usd=cap,
+            shared_ledger=shared_ledger,
+        )
         # Live providers default to 60 requests/minute; mocks are unthrottled unless configured.
         self._limiters = {
             provider: RateLimiter(config.execution.rate_limits[provider].requests_per_minute)
