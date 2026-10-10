@@ -1,0 +1,44 @@
+name: Seshat scheduled collection
+
+on:
+  schedule:
+    - cron: "17 13,1 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: seshat-data-collection
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install Seshat
+        run: pip install -e ".[data,providers]"
+      - name: Run bounded offline collection
+        run: |
+          # Mock-only until shared persistent billing ledger and durable
+          # artifact storage are configured; never inject provider API keys.
+          python -m seshat.data.cli collect --config configs/data_collection.yaml
+          python -m seshat.data.cli validate
+          python -m seshat.data.cli export --format csv --limit 100
+          python -m seshat.data.cli stats > collection_stats.json
+      - name: Upload offline batch
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seshat-offline-collection-${{ github.run_id }}
+          path: |
+            data/
+            collection_stats.json
+          retention-days: 30
+          if-no-files-found: warn
