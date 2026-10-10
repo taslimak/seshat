@@ -1,0 +1,188 @@
+{
+  "base_cells": 350,
+  "by_category": {
+    "cv": 0.107,
+    "levels": {
+      "classification": 24,
+      "code_generation": 21,
+      "code_review": 27,
+      "creative_writing": 27,
+      "debugging": 23,
+      "extraction": 27,
+      "long_context_analysis": 25,
+      "mathematics": 23,
+      "multi_turn": 21,
+      "question_answering": 23,
+      "reasoning": 25,
+      "short_answer": 25,
+      "structured_json": 29,
+      "summarization": 23,
+      "tool_calling": 23,
+      "translation": 23,
+      "verbose_explanation": 31
+    },
+    "max_min_ratio": 1.476
+  },
+  "by_factor": {
+    "caching": {
+      "cv": 0.048,
+      "levels": {
+        "False": 220,
+        "True": 200
+      },
+      "max_min_ratio": 1.1
+    },
+    "effort": {
+      "cv": 0.319,
+      "levels": {
+        "high": 138,
+        "low": 139,
+        "medium": 73,
+        "minimal": 70
+      },
+      "max_min_ratio": 1.986
+    },
+    "max_output_tokens": {
+      "cv": 0.052,
+      "levels": {
+        "4096": 221,
+        "512": 199
+      },
+      "max_min_ratio": 1.111
+    },
+    "structured_output": {
+      "cv": 0.376,
+      "levels": {
+        "False": 289,
+        "True": 131
+      },
+      "max_min_ratio": 2.206
+    },
+    "target": {
+      "cv": 0.038,
+      "levels": {
+        "mock-anthropic/mock-claude": 133,
+        "mock-gemini/mock-gemini": 141,
+        "mock-openai/mock-gpt": 146
+      },
+      "max_min_ratio": 1.098
+    },
+    "thinking_mode": {
+      "cv": 0.743,
+      "levels": {
+        "None": 287,
+        "adaptive": 64,
+        "disabled": 69
+      },
+      "max_min_ratio": 4.484
+    }
+  },
+  "by_factor_within_target": {
+    "mock-anthropic/mock-claude": {
+      "caching": {
+        "cv": 0.444,
+        "levels": {
+          "False": 37,
+          "True": 96
+        },
+        "max_min_ratio": 2.595
+      },
+      "effort": {
+        "cv": 0.023,
+        "levels": {
+          "high": 65,
+          "low": 68
+        },
+        "max_min_ratio": 1.046
+      },
+      "max_output_tokens": {
+        "cv": 0.038,
+        "levels": {
+          "4096": 64,
+          "512": 69
+        },
+        "max_min_ratio": 1.078
+      },
+      "structured_output": {
+        "cv": 0.97,
+        "levels": {
+          "False": 2,
+          "True": 131
+        },
+        "max_min_ratio": 65.5
+      },
+      "thinking_mode": {
+        "cv": 0.038,
+        "levels": {
+          "adaptive": 64,
+          "disabled": 69
+        },
+        "max_min_ratio": 1.078
+      }
+    },
+    "mock-gemini/mock-gemini": {
+      "effort": {
+        "cv": 0.007,
+        "levels": {
+          "high": 70,
+          "low": 71
+        },
+        "max_min_ratio": 1.014
+      },
+      "max_output_tokens": {
+        "cv": 0.092,
+        "levels": {
+          "4096": 77,
+          "512": 64
+        },
+        "max_min_ratio": 1.203
+      }
+    },
+    "mock-openai/mock-gpt": {
+      "caching": {
+        "cv": 0.425,
+        "levels": {
+          "False": 42,
+          "True": 104
+        },
+        "max_min_ratio": 2.476
+      },
+      "effort": {
+        "cv": 0.664,
+        "levels": {
+          "high": 3,
+          "medium": 73,
+          "minimal": 70
+        },
+        "max_min_ratio": 24.333
+      },
+      "max_output_tokens": {
+        "cv": 0.096,
+        "levels": {
+          "4096": 80,
+          "512": 66
+        },
+        "max_min_ratio": 1.212
+      }
+    }
+  },
+  "by_length_stratum": {
+    "cv": 0.22,
+    "levels": {
+      "long": 99,
+      "medium": 173,
+      "short": 148
+    },
+    "max_min_ratio": 1.747
+  },
+  "config_hash": "da651c09cf0576f71001900249c3c085d021c97e03fbfc741d6f4672569d2a56",
+  "configurations": 64,
+  "excluded_combinations": {},
+  "experiment_id": "offline_pilot_v1",
+  "full_cartesian_requests": 7680,
+  "planned_requests": 420,
+  "prompts_considered": 120,
+  "repeated_cells": 35,
+  "repetitions_per_repeated_cell": 3,
+  "trimmed_cells_for_budget": 10
+}

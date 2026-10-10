@@ -1,0 +1,28 @@
+{
+  "id": "msg_fixture_002",
+  "type": "message",
+  "model": "claude-sonnet-5-5",
+  "stop_reason": "end_turn",
+  "content": [
+    {
+      "type": "text",
+      "text": "Continued answer."
+    }
+  ],
+  "usage": {
+    "input_tokens": 23000,
+    "output_tokens": 1000,
+    "iterations": [
+      {
+        "type": "compaction",
+        "input_tokens": 180000,
+        "output_tokens": 3500
+      },
+      {
+        "type": "message",
+        "input_tokens": 23000,
+        "output_tokens": 1000
+      }
+    ]
+  }
+}

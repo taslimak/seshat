@@ -1,19 +1,14 @@
-"""Canonical schemas for controlled experiment data."""
+"""Prompt-bank schema (PromptRecord v2.0) and data-quality decision types.
+
+Canonical request/usage records live in ``seshat.data.schemas``.
+"""
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, model_validator
-
-EffortLevel = Literal["auto", "none", "low", "medium", "high", "xhigh", "max"]
-
-
-class RunStatus(StrEnum):
-    SUCCESS = "success"
-    FAILED = "failed"
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 
 
 class QualityDecision(StrEnum):
@@ -23,122 +18,109 @@ class QualityDecision(StrEnum):
     REJECT = "REJECT"
 
 
+PromptRole = Literal["system", "user", "assistant"]
+ReviewStatus = Literal["unreviewed", "approved", "rejected"]
+PROMPT_SCHEMA_VERSION: Literal["2.0"] = "2.0"
+
+
+class PromptMessage(BaseModel):
+    """One turn of a structured (multi-turn) prompt."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    role: PromptRole
+    content: str = Field(min_length=1)
+
+
+class ToolDefinition(BaseModel):
+    """Provider-neutral tool/function definition offered to the model."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")
+    description: str = Field(min_length=1)
+    input_schema: dict[str, Any] = Field(default_factory=lambda: {"type": "object"})
+
+
+def render_messages(messages: list[PromptMessage]) -> str:
+    """Canonical flat text for a structured prompt (used for features and hashing)."""
+    return "\n\n".join(f"{message.role}: {message.content}" for message in messages)
+
+
 class PromptRecord(BaseModel):
+    """A prompt in the bank (schema 2.0; 1.0 lines without the new fields still load).
+
+    Single-turn prompts set ``text``. Structured prompts set ``messages`` (and
+    optionally ``tools``); ``text`` is then derived with ``render_messages`` so
+    features and hashes stay comparable across both forms.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: Literal["2.0"] = PROMPT_SCHEMA_VERSION
     prompt_id: str = Field(min_length=1)
     prompt_family_id: str = Field(min_length=1)
     category: str = Field(min_length=1)
+    subcategory: str | None = None
+    prompt_template_id: str | None = None
+    generation_seed: int | None = None
+    variation_id: str | None = None
     text: str = Field(min_length=1)
+    messages: list[PromptMessage] | None = None
+    tools: list[ToolDefinition] = Field(default_factory=list)
     source: str = Field(min_length=1)
-    language: str = "en"
+    source_detail: str | None = None
+    language: str = Field(default="en", pattern=r"^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$")
     complexity: Literal["low", "medium", "high"] = "medium"
     is_synthetic: bool = False
     license_id: str | None = None
     commercial_use_allowed: bool | None = None
+    tags: list[str] = Field(default_factory=list)
+    review_status: ReviewStatus = "unreviewed"
+    reviewed_by: str | None = None
+    reviewed_at: AwareDatetime | None = None
+    review_notes: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
-
-def _default_efforts() -> list[EffortLevel]:
-    return ["auto"]
-
-
-class ProviderExperimentConfig(BaseModel):
-    models: list[str] = Field(min_length=1)
-    efforts: list[EffortLevel] = Field(default_factory=_default_efforts)
-    max_output_tokens: int = Field(default=2048, ge=1)
-    temperature: float | None = Field(default=None, ge=0.0)
-
-
-class ExperimentConfig(BaseModel):
-    experiment_id: str = Field(min_length=1)
-    prompt_sources: list[str] = Field(min_length=1)
-    providers: dict[str, ProviderExperimentConfig] = Field(min_length=1)
-    repetitions: int = Field(default=1, ge=1)
-    max_requests: int | None = Field(default=None, ge=1)
-    seed: int = 1729
-    sample_models_per_prompt: int | None = Field(default=None, ge=1)
-    metadata: dict[str, Any] = Field(default_factory=dict)
-
-
-class ManifestRow(BaseModel):
-    run_id: str
-    condition_id: str
-    experiment_id: str
-    prompt_id: str
-    prompt_family_id: str
-    category: str
-    provider: str
-    model: str
-    effort: EffortLevel
-    repetition: int = Field(ge=1)
-    max_output_tokens: int = Field(ge=1)
-    temperature: float | None = None
-
-
-class NormalizedUsage(BaseModel):
-    input_tokens: int | None = Field(default=None, ge=0)
-    output_tokens: int | None = Field(default=None, ge=0)
-    reasoning_tokens: int | None = Field(default=None, ge=0)
-    cached_input_tokens: int | None = Field(default=None, ge=0)
-    cache_creation_tokens: int | None = Field(default=None, ge=0)
-    tool_prompt_tokens: int | None = Field(default=None, ge=0)
-    total_tokens: int | None = Field(default=None, ge=0)
-    billable_tokens: int | None = Field(default=None, ge=0)
+    @model_validator(mode="before")
+    @classmethod
+    def _derive_text_from_messages(cls, data: Any) -> Any:
+        if not isinstance(data, dict) or not data.get("messages"):
+            return data
+        messages = [PromptMessage.model_validate(item) for item in data["messages"]]
+        rendered = render_messages(messages)
+        if data.get("text") not in (None, "", rendered):
+            raise ValueError("text is derived from messages; omit it for structured prompts")
+        return {**data, "text": rendered}
 
     @model_validator(mode="after")
-    def totals_are_plausible(self) -> NormalizedUsage:
-        if (
-            self.total_tokens is not None
-            and self.input_tokens is not None
-            and self.output_tokens is not None
-            and self.total_tokens < self.input_tokens + self.output_tokens
-        ):
-            raise ValueError("total_tokens cannot be smaller than input_tokens + output_tokens")
+    def _check_structure_and_review(self) -> PromptRecord:
+        if self.messages is not None:
+            if not self.messages:
+                raise ValueError("messages must not be empty")
+            if self.messages[-1].role != "user":
+                raise ValueError("the last message of a prompt must have role 'user'")
+            if any(message.role == "system" for message in self.messages[1:]):
+                raise ValueError("a system message may only appear first")
+        names = [tool.name for tool in self.tools]
+        if len(names) != len(set(names)):
+            raise ValueError("tool names must be unique")
+        if self.review_status != "unreviewed" and not self.reviewed_by:
+            raise ValueError("reviewed_by is required once a prompt is approved or rejected")
         return self
 
+    @property
+    def message_count(self) -> int:
+        return len(self.messages) if self.messages else 1
 
-class ProviderResult(BaseModel):
-    provider_request_id: str | None = None
-    model_resolved: str | None = None
-    usage: NormalizedUsage
-    provider_usage_raw: dict[str, Any] = Field(default_factory=dict)
-    provider_response_raw: dict[str, Any] = Field(default_factory=dict)
-    finish_reason: str | None = None
-    response_text: str | None = None
-    latency_ms: float = Field(ge=0)
-    is_refusal: bool = False
-    is_truncated: bool = False
+    def provider_messages(self) -> list[dict[str, str]] | None:
+        """Messages as plain dicts for provider adapters (``None`` for single-turn)."""
+        if self.messages is None:
+            return None
+        return [message.model_dump() for message in self.messages]
 
-
-class RawObservation(BaseModel):
-    observation_id: str
-    run_id: str
-    condition_id: str
-    experiment_id: str
-    prompt_id: str
-    prompt_family_id: str
-    category: str
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    provider: str
-    model_requested: str
-    model_resolved: str | None = None
-    effort: EffortLevel
-    repetition: int = Field(ge=1)
-    max_output_tokens: int = Field(ge=1)
-    temperature: float | None = None
-    request_features: dict[str, int | float | str | bool | None] = Field(default_factory=dict)
-    provider_usage_raw: dict[str, Any] = Field(default_factory=dict)
-    normalized_usage: NormalizedUsage | None = None
-    provider_response_raw: dict[str, Any] = Field(default_factory=dict)
-    provider_request_id: str | None = None
-    finish_reason: str | None = None
-    response_char_count: int | None = Field(default=None, ge=0)
-    latency_ms: float | None = Field(default=None, ge=0)
-    is_refusal: bool = False
-    is_truncated: bool = False
-    status: RunStatus
-    attempt_count: int = Field(default=1, ge=1)
-    error_type: str | None = None
-    error_message: str | None = None
+    def provider_tools(self) -> list[dict[str, Any]] | None:
+        return [tool.model_dump() for tool in self.tools] or None
 
 
 class QualityFlag(BaseModel):

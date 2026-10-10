@@ -1,6 +1,0 @@
-observation_id,run_id,experiment_id,prompt_id,prompt_family_id,category,provider,model_requested,model_resolved,effort,repetition,max_output_tokens,char_count,word_count,input_tokens,output_tokens,total_tokens,finish_reason,response_char_count,latency_ms,is_refusal,is_truncated,quality_decision
-obs_87d36bc88a5312f8a323,run_0044ca15835acc40426e,pilot_001,p_0013,pf_0013,translation,mock,mock-v1,mock-v1,high,1,512,72,11,18,46,64,stop,46,1.0,False,False,PASS
-obs_4f7a61e1d4c7f72829b5,run_0142ef51bd5b3626f912,pilot_001,p_0036,pf_0036,multi_turn_conversation,mock,mock-v1,mock-v1,high,2,512,154,23,38,66,104,stop,66,1.0,False,False,PASS
-obs_cc385eae44d1a4130c88,run_02b239f34694ca78e50e,pilot_001,p_0006,pf_0006,debugging,mock,mock-v1,mock-v1,high,2,512,86,13,22,55,77,stop,55,1.0,False,False,PASS
-obs_d45191737ee5ee40ee09,run_02c270b974ba2205302c,pilot_001,p_0021,pf_0021,research_synthesis,mock,mock-v1,mock-v1,high,2,512,114,14,28,56,84,stop,56,1.0,False,False,PASS
-obs_61e8c3344f02cc05b57c,run_0698c661f115a3d00422,pilot_001,p_0012,pf_0012,extraction,mock,mock-v1,mock-v1,high,1,512,106,17,26,45,71,stop,45,1.0,False,False,PASS

@@ -13,19 +13,17 @@ htmlcov/
 venv/
 .env
 
-# Model/data artifacts
+# Model/data artifacts. Collected datasets never go into Git by default;
+# only data/README.md and the small mock-only data/fixtures/ are tracked.
 artifacts/*
 !artifacts/README.md
-data/raw/
-data/manifests/
-data/normalized/
-data/features/
-data/splits/
-data/releases/
-data/quarantine/
-data/profiles/
+data/*
+!data/README.md
+!data/fixtures/
 *.joblib
 *.pkl
+*.parquet
+!tests/**/*.parquet
 
 # Editors / OS
 .DS_Store

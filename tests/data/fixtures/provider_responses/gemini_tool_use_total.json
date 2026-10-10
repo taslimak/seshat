@@ -1,0 +1,26 @@
+{
+  "response_id": "gem_fixture_002",
+  "model_version": "gemini-2.5-flash",
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "function_call": {
+              "name": "lookup",
+              "args": {}
+            }
+          }
+        ]
+      },
+      "finish_reason": "STOP"
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 200,
+    "candidates_token_count": 15,
+    "thoughts_token_count": null,
+    "tool_use_prompt_token_count": 50,
+    "total_token_count": 265
+  }
+}

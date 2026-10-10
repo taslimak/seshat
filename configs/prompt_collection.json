@@ -1,0 +1,19 @@
+{
+  "policy_version": "1.0",
+  "licenses": {
+    "project-authored": {"commercial_use": true, "attribution_required": false},
+    "CC0-1.0": {"commercial_use": true, "attribution_required": false},
+    "MIT": {"commercial_use": true, "attribution_required": true},
+    "Apache-2.0": {"commercial_use": true, "attribution_required": true},
+    "CC-BY-4.0": {"commercial_use": true, "attribution_required": true},
+    "CC-BY-SA-4.0": {"commercial_use": true, "attribution_required": true},
+    "CC-BY-NC-4.0": {"commercial_use": false, "attribution_required": true}
+  },
+  "allow_noncommercial": false,
+  "min_words": 3,
+  "max_chars": 20000,
+  "max_synthetic_share": 0.5,
+  "near_duplicate_threshold": 0.8,
+  "min_approved_per_category": 3,
+  "notes": "Licenses not listed here are rejected at import. Add one only after legal review. Non-commercial licenses are rejected unless allow_noncommercial is true, because Seshat is intended for commercial use."
+}

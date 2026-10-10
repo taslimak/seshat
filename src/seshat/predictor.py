@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from seshat.features import extract_prompt_features
+from seshat.features import PromptFeatures, extract_prompt_features
 
 
 @dataclass(frozen=True)
@@ -26,17 +26,29 @@ class BaselinePredictor:
     version = "baseline-0.1"
 
     def predict(self, prompt: str, model: str, effort: str) -> Prediction:
-        features = extract_prompt_features(prompt)
+        return self.predict_features(extract_prompt_features(prompt), model, effort)
 
+    def predict_features(self, features: PromptFeatures, model: str, effort: str) -> Prediction:
+        """Predict from precomputed prompt features (no prompt text needed)."""
+        return self.predict_from_word_count(features.word_count, model, effort)
+
+    def predict_from_word_count(
+        self, word_count: int, model: str, effort: str | None
+    ) -> Prediction:
+        """Core heuristic. Used for stored, privacy-safe request records too.
+
+        Note: the baseline does not use ``model`` and its interval is not calibrated.
+        """
+        del model  # The heuristic baseline does not yet use the model identifier.
         effort_multiplier = {
             "low": 0.8,
             "medium": 1.0,
             "high": 1.35,
             "auto": 1.0,
-        }.get(effort, 1.0)
+        }.get(effort or "auto", 1.0)
 
         # Conservative heuristic baseline. Replace after empirical calibration.
-        estimate = max(32, round((48 + 0.55 * features.word_count) * effort_multiplier))
+        estimate = max(32, round((48 + 0.55 * word_count) * effort_multiplier))
         interval = max(24, round(estimate * 0.65))
 
         return Prediction(

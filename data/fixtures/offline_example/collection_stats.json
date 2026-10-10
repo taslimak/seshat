@@ -1,0 +1,62 @@
+{
+  "by_provider_model": {
+    "mock-anthropic/mock-claude": {
+      "cached_input_tokens": 6008,
+      "completed": 119,
+      "estimated_cost_usd": 0.972712,
+      "failed": 0,
+      "incomplete": 14,
+      "input_tokens": 102767,
+      "latency_ms_p50": 2515.1,
+      "latency_ms_p95": 8569.74,
+      "observations": 133,
+      "output_tokens": 44139,
+      "rate_limited": 0,
+      "reasoning_tokens": 14413,
+      "retries": 0,
+      "source_types": [
+        "test_fixture"
+      ],
+      "uncertain": 0
+    },
+    "mock-gemini/mock-gemini": {
+      "cached_input_tokens": 12406,
+      "completed": 116,
+      "estimated_cost_usd": 0.206123,
+      "failed": 0,
+      "incomplete": 25,
+      "input_tokens": 112041,
+      "latency_ms_p50": 3961.2,
+      "latency_ms_p95": 14647.9,
+      "observations": 141,
+      "output_tokens": 70344,
+      "rate_limited": 0,
+      "reasoning_tokens": 35314,
+      "retries": 0,
+      "source_types": [
+        "test_fixture"
+      ],
+      "uncertain": 0
+    },
+    "mock-openai/mock-gpt": {
+      "cached_input_tokens": 16128,
+      "completed": 122,
+      "estimated_cost_usd": 0.61769,
+      "failed": 0,
+      "incomplete": 24,
+      "input_tokens": 124037,
+      "latency_ms_p50": 2532.25,
+      "latency_ms_p95": 7845.925,
+      "observations": 146,
+      "output_tokens": 49226,
+      "rate_limited": 0,
+      "reasoning_tokens": 17371,
+      "retries": 0,
+      "source_types": [
+        "test_fixture"
+      ],
+      "uncertain": 0
+    }
+  },
+  "observations": 420
+}

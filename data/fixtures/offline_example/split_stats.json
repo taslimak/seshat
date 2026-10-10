@@ -1,0 +1,192 @@
+{
+  "calibration": {
+    "actual_input_tokens": {
+      "mean": 688.3,
+      "missing": 0,
+      "p50": 218.0,
+      "p90": 1267.0
+    },
+    "actual_output_tokens": {
+      "mean": 304.98,
+      "missing": 0,
+      "p50": 303.0,
+      "p90": 512.0
+    },
+    "actual_reasoning_tokens": {
+      "mean": 127.7,
+      "missing": 0,
+      "p50": 65.0,
+      "p90": 369.60000000000036
+    },
+    "actual_total_tokens": {
+      "mean": 993.28,
+      "missing": 0,
+      "p50": 635.0,
+      "p90": 1753.6
+    },
+    "by_category": {
+      "classification": 9,
+      "code_review": 15,
+      "extraction": 10,
+      "mathematics": 3,
+      "multi_turn": 3,
+      "question_answering": 3
+    },
+    "by_provider": {
+      "mock-anthropic": 11,
+      "mock-gemini": 17,
+      "mock-openai": 15
+    },
+    "censored": 6,
+    "groups": 6,
+    "rows": 43
+  },
+  "test": {
+    "actual_input_tokens": {
+      "mean": 665.0,
+      "missing": 0,
+      "p50": 641.0,
+      "p90": 1309.6
+    },
+    "actual_output_tokens": {
+      "mean": 309.19,
+      "missing": 0,
+      "p50": 242.5,
+      "p90": 512.0
+    },
+    "actual_reasoning_tokens": {
+      "mean": 136.11,
+      "missing": 0,
+      "p50": 67.5,
+      "p90": 401.4999999999999
+    },
+    "actual_total_tokens": {
+      "mean": 974.19,
+      "missing": 0,
+      "p50": 970.0,
+      "p90": 1665.2
+    },
+    "by_category": {
+      "code_generation": 3,
+      "creative_writing": 8,
+      "debugging": 3,
+      "extraction": 3,
+      "long_context_analysis": 3,
+      "multi_turn": 3,
+      "question_answering": 3,
+      "short_answer": 3,
+      "structured_json": 11,
+      "summarization": 6,
+      "tool_calling": 7,
+      "translation": 6,
+      "verbose_explanation": 3
+    },
+    "by_provider": {
+      "mock-anthropic": 22,
+      "mock-gemini": 20,
+      "mock-openai": 20
+    },
+    "censored": 6,
+    "groups": 13,
+    "rows": 62
+  },
+  "train": {
+    "actual_input_tokens": {
+      "mean": 915.04,
+      "missing": 0,
+      "p50": 453.0,
+      "p90": 2138.8
+    },
+    "actual_output_tokens": {
+      "mean": 389.28,
+      "missing": 0,
+      "p50": 342.0,
+      "p90": 736.2000000000002
+    },
+    "actual_reasoning_tokens": {
+      "mean": 175.54,
+      "missing": 0,
+      "p50": 81.0,
+      "p90": 512.0
+    },
+    "actual_total_tokens": {
+      "mean": 1304.32,
+      "missing": 0,
+      "p50": 786.0,
+      "p90": 2862.8
+    },
+    "by_category": {
+      "classification": 15,
+      "code_generation": 12,
+      "code_review": 12,
+      "creative_writing": 11,
+      "debugging": 15,
+      "extraction": 14,
+      "long_context_analysis": 22,
+      "mathematics": 20,
+      "multi_turn": 15,
+      "question_answering": 14,
+      "reasoning": 25,
+      "short_answer": 19,
+      "structured_json": 15,
+      "summarization": 12,
+      "tool_calling": 11,
+      "translation": 11,
+      "verbose_explanation": 14
+    },
+    "by_provider": {
+      "mock-anthropic": 80,
+      "mock-gemini": 86,
+      "mock-openai": 91
+    },
+    "censored": 42,
+    "groups": 51,
+    "rows": 257
+  },
+  "validation": {
+    "actual_input_tokens": {
+      "mean": 566.41,
+      "missing": 0,
+      "p50": 139.5,
+      "p90": 2341.6
+    },
+    "actual_output_tokens": {
+      "mean": 541.03,
+      "missing": 0,
+      "p50": 350.5,
+      "p90": 1410.5
+    },
+    "actual_reasoning_tokens": {
+      "mean": 138.88,
+      "missing": 0,
+      "p50": 84.0,
+      "p90": 377.70000000000016
+    },
+    "actual_total_tokens": {
+      "mean": 1107.45,
+      "missing": 0,
+      "p50": 832.0,
+      "p90": 2538.5
+    },
+    "by_category": {
+      "code_generation": 6,
+      "creative_writing": 8,
+      "debugging": 5,
+      "question_answering": 3,
+      "short_answer": 3,
+      "structured_json": 3,
+      "summarization": 5,
+      "tool_calling": 5,
+      "translation": 6,
+      "verbose_explanation": 14
+    },
+    "by_provider": {
+      "mock-anthropic": 20,
+      "mock-gemini": 18,
+      "mock-openai": 20
+    },
+    "censored": 9,
+    "groups": 10,
+    "rows": 58
+  }
+}

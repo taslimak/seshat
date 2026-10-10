@@ -8,24 +8,43 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{ matrix.python-version }}
           cache: pip
       - name: Install
-        run: pip install -e ".[dev,data]"
+        run: pip install -e ".[dev,data,providers]"
       - name: Lint
-        run: ruff check .
-      - name: Test
-        run: pytest
-      - name: Data factory smoke test
         run: |
-          seshat-data build-manifest --config configs/experiments/pilot_001.json --output data/manifests/pilot_001.parquet
-          seshat-data run --manifest data/manifests/pilot_001.parquet --prompts prompts/hand_authored.jsonl --output data/raw/pilot_001.jsonl
-          seshat-data normalize --input data/raw/pilot_001.jsonl --output data/normalized/pilot_001.parquet
-          seshat-data validate --input data/normalized/pilot_001.parquet --output data/normalized/pilot_001.validated.parquet
-          seshat-data features --input data/normalized/pilot_001.validated.parquet --output data/features/pilot_001.parquet
-          seshat-data split --input data/features/pilot_001.parquet --output data/splits/pilot_001.parquet
-          seshat-data release --features data/features/pilot_001.parquet --splits data/splits/pilot_001.parquet --version ci
+          ruff check .
+          ruff format --check .
+      - name: Type check
+        run: mypy src
+      - name: Test (live provider tests stay skipped; no API keys in CI)
+        run: pytest --cov=seshat --cov-report=term
+      - name: Offline pipeline smoke test (mock providers, no API spend)
+        run: |
+          seshat-data generate --count 120 --seed 42
+          seshat-data collect --config configs/data_collection.yaml --dry-run
+          seshat-data collect --config configs/data_collection.yaml
+          seshat-data collect --config configs/data_collection.yaml   # resume: dispatches nothing
+          seshat-data validate
+          seshat-data export --format csv
+          if seshat-data prepare-training --version ci; then
+            echo "mock data must not produce a real-label dataset" && exit 1
+          fi
+          seshat-data prepare-training --version ci --label-origin synthetic
+          seshat-data stats
+          seshat-data predict
+          seshat-data compare
+      - name: Live collection is refused without a cost cap
+        run: |
+          if seshat-data collect --config configs/experiments/live_pilot.yaml --execute-live; then
+            echo "live collection without --max-cost-usd must fail" && exit 1
+          fi

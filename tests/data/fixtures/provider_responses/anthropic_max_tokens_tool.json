@@ -1,0 +1,28 @@
+{
+  "id": "msg_fixture_003",
+  "type": "message",
+  "model": "claude-haiku-5-5",
+  "stop_reason": "max_tokens",
+  "content": [
+    {
+      "type": "text",
+      "text": "Partial"
+    },
+    {
+      "type": "tool_use",
+      "id": "toolu_1",
+      "name": "search",
+      "input": {}
+    }
+  ],
+  "usage": {
+    "input_tokens": 900,
+    "cache_read_input_tokens": 0,
+    "cache_creation_input_tokens": 0,
+    "output_tokens": 1024,
+    "server_tool_use": {
+      "web_search_requests": 2,
+      "web_fetch_requests": 0
+    }
+  }
+}

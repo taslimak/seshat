@@ -1,0 +1,26 @@
+{
+  "id": "resp_fixture_002",
+  "object": "response",
+  "model": "gpt-6-luna",
+  "status": "incomplete",
+  "incomplete_details": {
+    "reason": "max_output_tokens"
+  },
+  "output": [
+    {
+      "type": "reasoning",
+      "summary": []
+    }
+  ],
+  "usage": {
+    "input_tokens": 300,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
+    "output_tokens": 512,
+    "output_tokens_details": {
+      "reasoning_tokens": 512
+    },
+    "total_tokens": 812
+  }
+}

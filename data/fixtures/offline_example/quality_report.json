@@ -1,0 +1,154 @@
+{
+  "approximate_spend_usd_by_source_type": {
+    "test_fixture": 1.796525
+  },
+  "by_decision": {
+    "PASS": 357,
+    "WARNING": 63
+  },
+  "by_effort": {
+    "high": 138,
+    "low": 139,
+    "medium": 73,
+    "minimal": 70
+  },
+  "by_flag": {
+    "censored_output": 63
+  },
+  "by_label_quality": {
+    "synthetic": 420
+  },
+  "by_prompt_category": {
+    "classification": 24,
+    "code_generation": 21,
+    "code_review": 27,
+    "creative_writing": 27,
+    "debugging": 23,
+    "extraction": 27,
+    "long_context_analysis": 25,
+    "mathematics": 23,
+    "multi_turn": 21,
+    "question_answering": 23,
+    "reasoning": 25,
+    "short_answer": 25,
+    "structured_json": 29,
+    "summarization": 23,
+    "tool_calling": 23,
+    "translation": 23,
+    "verbose_explanation": 31
+  },
+  "by_provider_model": {
+    "mock-anthropic/mock-claude": 133,
+    "mock-gemini/mock-gemini": 141,
+    "mock-openai/mock-gpt": 146
+  },
+  "by_response_status": {
+    "completed": 357,
+    "incomplete": 63
+  },
+  "by_source_type": {
+    "test_fixture": 420
+  },
+  "cache_usage": {
+    "cache_write_observations": 16,
+    "cached_fraction_of_input": {
+      "count": 26,
+      "max": 0.8,
+      "mean": 0.68,
+      "p10": 0.5263157894736842,
+      "p50": 0.7498257839721254,
+      "p90": 0.7998405103668261
+    },
+    "observations_with_cache_reads": 26,
+    "share_with_cache_reads": 0.0619
+  },
+  "coverage_providers_per_category": {
+    "classification": 3,
+    "code_generation": 3,
+    "code_review": 3,
+    "creative_writing": 3,
+    "debugging": 3,
+    "extraction": 3,
+    "long_context_analysis": 3,
+    "mathematics": 3,
+    "multi_turn": 3,
+    "question_answering": 3,
+    "reasoning": 3,
+    "short_answer": 3,
+    "structured_json": 3,
+    "summarization": 3,
+    "tool_calling": 3,
+    "translation": 3,
+    "verbose_explanation": 3
+  },
+  "duplicates": {
+    "duplicate_observation_ids": 0,
+    "duplicate_prompt_content_rate": 0.7238,
+    "note": "Repeated observations of the same prompt (by design) count as duplicate content; group-aware splitting keeps them together. Near-duplicate prompt text is detected at the prompt-bank stage (seshat-data prompts check).",
+    "prompt_hashes_in_multiple_families": 0
+  },
+  "generated_at": "2026-10-10T21:35:38.986663+00:00",
+  "latency_ms": {
+    "count": 420,
+    "max": 34552.6,
+    "mean": 3689.91,
+    "p10": 737.2900000000001,
+    "p50": 2970.25,
+    "p90": 6781.900000000001
+  },
+  "preflight_relative_discrepancy": {
+    "count": 420,
+    "max": 0.0,
+    "mean": 0.0,
+    "p10": 0.0,
+    "p50": 0.0,
+    "p90": 0.0
+  },
+  "spend_note": "Price-table estimates. test_fixture spend uses fixture prices and is not real money.",
+  "token_accounting_discrepancies": {},
+  "token_distributions": {
+    "actual_input_tokens": {
+      "count": 420,
+      "max": 7518.0,
+      "mean": 806.77,
+      "p10": 55.0,
+      "p50": 360.0,
+      "p90": 1927.900000000005
+    },
+    "actual_output_tokens": {
+      "count": 420,
+      "max": 3660.0,
+      "mean": 389.78,
+      "p10": 67.80000000000001,
+      "p50": 320.0,
+      "p90": 750.4000000000001
+    },
+    "actual_reasoning_tokens": {
+      "count": 420,
+      "max": 2271.0,
+      "mean": 159.76,
+      "p10": 0.0,
+      "p50": 79.5,
+      "p90": 512.0
+    },
+    "actual_total_tokens": {
+      "count": 420,
+      "max": 8417.0,
+      "mean": 1196.56,
+      "p10": 238.00000000000006,
+      "p50": 803.5,
+      "p90": 2497.7000000000007
+    }
+  },
+  "totals": {
+    "eligible_labeled": 420,
+    "eligible_real_labels": 0,
+    "eligible_synthetic_labels": 420,
+    "missing_label_pct": 0.0,
+    "observations": 420,
+    "quarantined": 0,
+    "rejected": 0,
+    "request_records": 420,
+    "warnings": 63
+  }
+}
