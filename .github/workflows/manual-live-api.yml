@@ -1,0 +1,91 @@
+name: Manual paid API smoke test
+
+on:
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: "Provider to test (requires matching GitHub Actions secret)"
+        type: choice
+        required: true
+        options: [openai, anthropic, gemini]
+      model:
+        description: "Exact model ID from configs/model_catalog.json"
+        type: string
+        required: true
+      approve_paid_call:
+        description: "I approve up to 2 paid requests, estimated cap USD 0.20"
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: seshat-manual-paid-pilot
+  cancel-in-progress: false
+
+jobs:
+  live-smoke:
+    if: ${{ inputs.approve_paid_call == true }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SESHAT_PROVIDER: ${{ inputs.provider }}
+      SESHAT_MODEL: ${{ inputs.model }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      SESHAT_PROMPT_HASH_KEY: ${{ secrets.SESHAT_PROMPT_HASH_KEY }}
+      SESHAT_LIVE_TESTS: "0"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Verify required secrets exist (do not print values)
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$SESHAT_PROVIDER" in
+            openai) test -n "${OPENAI_API_KEY:-}" ;;
+            anthropic) test -n "${ANTHROPIC_API_KEY:-}" ;;
+            gemini) test -n "${GEMINI_API_KEY:-}" ;;
+            *) exit 1 ;;
+          esac || { echo "Provider credential is missing. Configure its Actions secret."; exit 1; }
+          test -n "${SESHAT_PROMPT_HASH_KEY:-}" || {
+            echo "Missing SESHAT_PROMPT_HASH_KEY Actions secret."
+            exit 1
+          }
+      - name: Install provider adapters and data pipeline
+        run: pip install -e ".[data,providers]"
+      - name: Build safe two-request pilot
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/prepare_live_smoke.py \
+            --provider "$SESHAT_PROVIDER" \
+            --model "$SESHAT_MODEL" \
+            --experiment-id "manual-${{ github.run_id }}" \
+            --output data/manual_live_smoke.yml
+      - name: Inspect estimated cost without sending requests
+        run: python -m seshat.data.cli collect --config data/manual_live_smoke.yml --dry-run
+      - name: Execute explicitly approved, capped real requests
+        run: |
+          python -m seshat.data.cli collect \
+            --config data/manual_live_smoke.yml \
+            --execute-live \
+            --max-cost-usd 0.20
+      - name: Validate and export labeled observations
+        run: |
+          python -m seshat.data.cli validate
+          python -m seshat.data.cli export --format csv --limit 20
+      - name: Upload results for inspection
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seshat-live-pilot-${{ github.run_id }}
+          path: data/
+          retention-days: 7
+          if-no-files-found: warn
