@@ -43,3 +43,68 @@ jobs:
             collection_stats.json
           retention-days: 30
           if-no-files-found: warn
+
+  # LIVE COLLECTION IS DISABLED UNTIL OWNER CONFIGURES A DEDICATED
+  # PERSISTENT SELF-HOSTED RUNNER AND SETS THE REPOSITORY VARIABLE BELOW.
+  # The hosted mock job above never uses API keys or charges money.
+  paid-collection:
+    if: ${{ vars.SESHAT_ENABLE_SCHEDULED_PAID == 'true' }}
+    runs-on: [self-hosted, linux, seshat-persistent]
+    timeout-minutes: 20
+    env:
+      SESHAT_UNATTENDED_COLLECTION: "1"
+      SESHAT_COLLECTION_PROVIDER: ${{ vars.SESHAT_COLLECTION_PROVIDER }}
+      SESHAT_COLLECTION_MODEL: ${{ vars.SESHAT_COLLECTION_MODEL }}
+      SESHAT_PERSISTENT_DATA_ROOT: ${{ vars.SESHAT_PERSISTENT_DATA_ROOT }}
+      SESHAT_SHARED_LEDGER_PATH: ${{ vars.SESHAT_SHARED_LEDGER_PATH }}
+      SESHAT_DAILY_COST_CAP_USD: "0.30"
+      SESHAT_MONTHLY_COST_CAP_USD: "10.00"
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      SESHAT_PROMPT_HASH_KEY: ${{ secrets.SESHAT_PROMPT_HASH_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Verify dedicated persistent storage and credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$SESHAT_COLLECTION_PROVIDER" in
+            openai) test -n "${OPENAI_API_KEY:-}" ;;
+            anthropic) test -n "${ANTHROPIC_API_KEY:-}" ;;
+            gemini) test -n "${GEMINI_API_KEY:-}" ;;
+            *) echo "Invalid collection provider"; exit 1 ;;
+          esac || { echo "Selected provider API secret is missing"; exit 1; }
+          test -n "${SESHAT_PROMPT_HASH_KEY:-}" || {
+            echo "Prompt hashing secret is missing"; exit 1;
+          }
+          test -n "${SESHAT_PERSISTENT_DATA_ROOT:-}" || exit 1
+          test -n "${SESHAT_SHARED_LEDGER_PATH:-}" || exit 1
+          case "$SESHAT_PERSISTENT_DATA_ROOT" in
+            /*) ;;
+            *) echo "Persistent path must be absolute"; exit 1 ;;
+          esac
+          test -d "$SESHAT_PERSISTENT_DATA_ROOT" || exit 1
+          test -f "$SESHAT_PERSISTENT_DATA_ROOT/.seshat-persistent-ready" || {
+            echo "Persistent storage has not been verified"; exit 1;
+          }
+          case "$SESHAT_SHARED_LEDGER_PATH" in
+            "$SESHAT_PERSISTENT_DATA_ROOT"/*) ;;
+            *) echo "Ledger must live within persistent data root"; exit 1 ;;
+          esac
+      - name: Install collection dependencies
+        run: python -m pip install -e ".[data,providers]"
+      - name: Generate cost-capped daily experiment
+        shell: bash
+        run: |
+          python scripts/prepare_scheduled_live.py --output /tmp/seshat-scheduled.yml
+      - name: Check estimated spend (no API request)
+        run: python -m seshat.data.cli collect --config /tmp/seshat-scheduled.yml --dry-run
+      - name: Collect at most four paid observations
+        run: |
+          python -m seshat.data.cli collect \
+            --config /tmp/seshat-scheduled.yml \
+            --execute-live --max-cost-usd 0.15
