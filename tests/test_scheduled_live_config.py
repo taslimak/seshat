@@ -33,11 +33,15 @@ def test_rejects_unverified_model_and_ephemeral_paths() -> None:
     now = datetime.now(ZoneInfo("America/New_York"))
     with pytest.raises(ValueError):
         make_config(
-            provider="openai", model="not-an-api-model",
-            now=now, storage_root="/var/lib/seshat/data",
+            provider="openai",
+            model="not-an-api-model",
+            now=now,
+            storage_root="/var/lib/seshat/data",
         )
     with pytest.raises(ValueError, match="absolute"):
         make_config(
-            provider="openai", model="gpt-6-luna",
-            now=now, storage_root="data",
+            provider="openai",
+            model="gpt-6-luna",
+            now=now,
+            storage_root="data",
         )
