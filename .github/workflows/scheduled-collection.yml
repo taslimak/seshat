@@ -2,7 +2,8 @@ name: Seshat scheduled collection
 
 on:
   schedule:
-    - cron: "17 13,1 * * *"
+    - cron: "17 9,21 * * *"
+      timezone: "America/New_York"
   workflow_dispatch:
 
 permissions:
