@@ -47,7 +47,7 @@ class Budget:
     def release(self, reserved: Decimal | None) -> None:
         """Undo a reservation for a call the provider rejected before generating."""
         self.reserved_usd -= reserved or Decimal(0)
-        self.dispatched -= 1
+        # Attempted external calls still count toward the request limit.
 
     @property
     def spent_or_reserved_usd(self) -> Decimal:
