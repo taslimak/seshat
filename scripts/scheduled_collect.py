@@ -41,7 +41,10 @@ def collect(
     provider, model = "mock", "mock-v1"
     if mode == "paid":
         if os.environ.get("SESHAT_ENABLE_PAID_COLLECTION") != "true":
-            raise RuntimeError("Paid collection disabled: set repository variable SESHAT_ENABLE_PAID_COLLECTION=true.")
+            raise RuntimeError(
+                "Paid collection disabled: set repository variable "
+                "SESHAT_ENABLE_PAID_COLLECTION=true."
+            )
         if os.environ.get("SESHAT_PROVIDER_BUDGET_CONFIRMED") != "yes":
             raise RuntimeError("Confirm an external provider billing cap before paid collection.")
         provider = os.environ.get("SESHAT_COLLECTION_PROVIDER", "").strip()
