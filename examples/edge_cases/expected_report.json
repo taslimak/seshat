@@ -1,0 +1,12 @@
+{
+  "duplicates": 1,
+  "quarantine_reasons": {
+    "conflicting_duplicate_id": 1,
+    "duplicate_provider_request_id": 1,
+    "invalid_json": 1,
+    "missing_provenance": 1,
+    "quality_quarantine": 3,
+    "schema_error": 2
+  },
+  "stored": 2
+}

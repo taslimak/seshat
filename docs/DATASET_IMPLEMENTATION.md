@@ -21,7 +21,7 @@ prompts/*.jsonl
 -> seshat.data.split
 -> prompt-family grouped assignments
 -> seshat.data.release
--> train / validation / calibration / test Parquet + checksums
+-> train / validation / calibration / test Parquet + manifest (lineage, label origin) + schema.json + checksums (immutable)
 ```
 
 ## Integration with the prediction service
@@ -38,17 +38,29 @@ The Anthropic adapter intentionally does not pretend OpenAI-style reasoning effo
 
 ## Resuming and retries
 
-Manifest `condition_id` and `run_id` values are deterministic hashes. The runner scans an existing raw JSONL file and skips completed run IDs. Transient failures use bounded exponential backoff; deterministic failures are recorded and later quarantined.
+Manifest `condition_id` and `run_id` values are deterministic hashes. The runner scans an existing raw JSONL file and skips completed run IDs. Transient failures use bounded exponential backoff; deterministic failures are recorded and later quarantined. With `--retry-failed`, retries append new raw lines, and `normalize` keeps the latest successful attempt per `run_id` (`raw_record_count` shows how many lines existed).
+
+## Provenance and label policy
+
+Every raw observation carries a `provenance` label from its adapter: mock runs are
+`synthetic`, while OpenAI and Anthropic runs are `real` / `controlled_experiment`.
+`normalize` carries this into a `data_origin` column, inferring it for legacy raw
+files. `features` uses real outcomes only, unless `--label-origin synthetic` is
+passed for pipeline tests, and never mixes origins. Releases record `label_origin`,
+and synthetic releases get a `_synthetic` suffix. See
+[DATASET_PIPELINE.md](DATASET_PIPELINE.md).
+
+## Paid-call safety gate
+
+`seshat-data run` refuses manifests containing a real provider unless
+`--allow-provider-calls` or `SESHAT_ALLOW_PROVIDER_CALLS=1` is given. The check runs
+before any request or file write.
 
 ## CSV view
 
-`data/records.csv` is a small checked-in mock preview. Regenerate a current view with:
-
-```bash
-seshat-data export-csv --input data/normalized/pilot_001.validated.parquet --output data/records.csv --limit 100
-```
-
-CSV is inspection-only; JSONL/Parquet remain canonical.
+`data/records.csv` is a small CSV view of the synthetic example observations. It is
+regenerated from `examples/synthetic_v1/` (see `data/README.md`). CSV is
+inspection-only; JSONL/Parquet remain canonical.
 
 ## Dataset v0.1
 

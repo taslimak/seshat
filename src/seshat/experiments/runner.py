@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import time
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -12,23 +11,21 @@ import pandas as pd
 
 from seshat.data.io import append_jsonl, load_jsonl
 from seshat.data.models import ManifestRow, PromptRecord, RawObservation, RunStatus
+from seshat.data.records import stable_id
 from seshat.features import extract_prompt_features
-from seshat.providers.anthropic import AnthropicAdapter
 from seshat.providers.base import ProviderAdapter, is_retriable_exception
-from seshat.providers.mock import MockAdapter
-from seshat.providers.openai import OpenAIAdapter
+from seshat.providers.registry import (
+    PROVIDERS,
+    adapter_class,
+    ensure_provider_calls_allowed,
+    provenance_for_provider,
+)
 
-AdapterFactory = Callable[[], ProviderAdapter]
-
-PROVIDERS: dict[str, AdapterFactory] = {
-    "openai": OpenAIAdapter,
-    "anthropic": AnthropicAdapter,
-    "mock": MockAdapter,
-}
+__all__ = ["PROVIDERS", "run_manifest"]
 
 
 def _observation_id(run_id: str) -> str:
-    return f"obs_{hashlib.sha256(run_id.encode()).hexdigest()[:20]}"
+    return stable_id("obs", run_id)
 
 
 def _request_features(prompt: str) -> dict[str, int | float | str | bool | None]:
@@ -43,7 +40,15 @@ def run_manifest(
     max_attempts: int = 4,
     retry_failed: bool = False,
     sleep: Callable[[float], None] = time.sleep,
+    allow_provider_calls: bool | None = None,
 ) -> int:
+    """Execute manifest rows not yet completed and append raw observations.
+
+    Real (network, potentially paid) providers run only when ``allow_provider_calls``
+    is true or ``SESHAT_ALLOW_PROVIDER_CALLS=1``; the check happens before any call.
+    Every observation is stamped with the adapter's provenance (mock => synthetic).
+    """
+    ensure_provider_calls_allowed(manifest["provider"].unique().tolist(), allow_provider_calls)
     prompt_by_id = {prompt.prompt_id: prompt for prompt in prompts}
     target = Path(raw_path)
     existing: dict[str, RawObservation] = {}
@@ -61,11 +66,9 @@ def run_manifest(
             raise ValueError(f"Manifest references unknown prompt_id {row.prompt_id}")
         adapter = adapters.get(row.provider)
         if adapter is None:
-            factory = PROVIDERS.get(row.provider)
-            if factory is None:
-                raise ValueError(f"Unsupported provider {row.provider}")
-            adapter = factory()
+            adapter = adapter_class(row.provider)()
             adapters[row.provider] = adapter
+        provenance = provenance_for_provider(row.provider, row.experiment_id)
         result = None
         error: Exception | None = None
         attempts = 0
@@ -115,6 +118,7 @@ def run_manifest(
                 is_refusal=result.is_refusal,
                 is_truncated=result.is_truncated,
                 status=RunStatus.SUCCESS,
+                provenance=provenance,
                 attempt_count=attempts,
             )
         else:
@@ -136,6 +140,7 @@ def run_manifest(
                 temperature=row.temperature,
                 request_features=_request_features(prompt.text),
                 status=RunStatus.FAILED,
+                provenance=provenance,
                 attempt_count=attempts,
                 error_type=type(error).__name__,
                 error_message=str(error)[:1000],

@@ -26,6 +26,17 @@ jobs:
           seshat-data run --manifest data/manifests/pilot_001.parquet --prompts prompts/hand_authored.jsonl --output data/raw/pilot_001.jsonl
           seshat-data normalize --input data/raw/pilot_001.jsonl --output data/normalized/pilot_001.parquet
           seshat-data validate --input data/normalized/pilot_001.parquet --output data/normalized/pilot_001.validated.parquet
-          seshat-data features --input data/normalized/pilot_001.validated.parquet --output data/features/pilot_001.parquet
+          seshat-data features --input data/normalized/pilot_001.validated.parquet --output data/features/pilot_001.parquet --label-origin synthetic
           seshat-data split --input data/features/pilot_001.parquet --output data/splits/pilot_001.parquet
           seshat-data release --features data/features/pilot_001.parquet --splits data/splits/pilot_001.parquet --version ci
+      - name: Record store smoke test
+        run: |
+          seshat-data ingest --record-type request_features --input examples/synthetic_v1/request_features.jsonl
+          seshat-data ingest --record-type observed_usage --input examples/synthetic_v1/observed_usage.jsonl
+          seshat-data ingest-experiment --raw data/raw/pilot_001.jsonl --prompts prompts/hand_authored.jsonl
+          seshat-data predict
+          seshat-data compare
+          seshat-data features --from-store data/store --output data/features/store.parquet --label-origin synthetic
+          seshat-data split --input data/features/store.parquet --output data/splits/store.parquet
+          seshat-data release --features data/features/store.parquet --splits data/splits/store.parquet --version ci-store
+          seshat-data purge-expired

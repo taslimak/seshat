@@ -9,13 +9,17 @@ from __future__ import annotations
 
 import hashlib
 import uuid
+from typing import ClassVar
 
 from seshat.data.models import EffortLevel, NormalizedUsage, ProviderResult
+from seshat.data.provenance import DataOrigin
 from seshat.providers.base import ProviderAdapter
 
 
 class MockAdapter(ProviderAdapter):
     name = "mock"
+    data_origin: ClassVar[DataOrigin] = DataOrigin.SYNTHETIC
+    makes_external_calls: ClassVar[bool] = False
 
     def execute(
         self,

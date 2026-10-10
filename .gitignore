@@ -24,6 +24,7 @@ data/splits/
 data/releases/
 data/quarantine/
 data/profiles/
+data/store/
 *.joblib
 *.pkl
 

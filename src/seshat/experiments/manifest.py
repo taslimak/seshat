@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import random
 from collections.abc import Sequence
 from pathlib import Path
@@ -11,10 +10,20 @@ import pandas as pd
 
 from seshat.data.io import load_json, load_jsonl, write_parquet
 from seshat.data.models import EffortLevel, ExperimentConfig, ManifestRow, PromptRecord
+from seshat.data.records import stable_id
 
 
-def _hash_id(prefix: str, value: str, length: int = 20) -> str:
-    return f"{prefix}_{hashlib.sha256(value.encode()).hexdigest()[:length]}"
+def _hash_id(prefix: str, value: str) -> str:
+    return stable_id(prefix, value)
+
+
+def find_project_root(start: str | Path) -> Path:
+    """Nearest ancestor of ``start`` containing ``pyproject.toml``; else the CWD."""
+    current = Path(start).resolve()
+    for candidate in (current, *current.parents):
+        if (candidate / "pyproject.toml").is_file():
+            return candidate
+    return Path.cwd()
 
 
 def load_prompts(paths: Sequence[str | Path]) -> list[PromptRecord]:
@@ -94,9 +103,19 @@ def build_manifest(config: ExperimentConfig, prompts: list[PromptRecord]) -> pd.
     return frame.sort_values("run_id").reset_index(drop=True)
 
 
-def build_manifest_from_config(config_path: str | Path, output_path: str | Path) -> pd.DataFrame:
+def build_manifest_from_config(
+    config_path: str | Path,
+    output_path: str | Path,
+    *,
+    root: str | Path | None = None,
+) -> pd.DataFrame:
+    """Build and write a manifest. Prompt sources resolve relative to ``root``.
+
+    ``root`` defaults to the project root containing the config (nearest ancestor with
+    ``pyproject.toml``), so configs work from any directory depth.
+    """
     config = ExperimentConfig.model_validate(load_json(config_path))
-    base = Path(config_path).resolve().parents[2]
+    base = Path(root) if root is not None else find_project_root(Path(config_path).parent)
     prompt_paths = [base / path for path in config.prompt_sources]
     prompts = load_prompts(prompt_paths)
     frame = build_manifest(config, prompts)

@@ -61,9 +61,32 @@ def write_json(path: str | Path, payload: dict[str, Any]) -> None:
 
 
 def write_parquet(path: str | Path, frame: pd.DataFrame) -> None:
+    """Write Parquet atomically (temp file in the same directory, then rename)."""
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
-    frame.to_parquet(target, index=False)
+    tmp_path = target.with_name(f".{target.name}.tmp")
+    frame.to_parquet(tmp_path, index=False)
+    tmp_path.replace(target)
+
+
+def write_jsonl(path: str | Path, records: Iterable[BaseModel | dict[str, Any]]) -> int:
+    """Write a complete JSONL file atomically (overwrites). Returns the line count."""
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    count = 0
+    with tempfile.NamedTemporaryFile(
+        "w", encoding="utf-8", dir=target.parent, delete=False, suffix=".tmp"
+    ) as tmp:
+        for record in records:
+            payload = record.model_dump(mode="json") if isinstance(record, BaseModel) else record
+            tmp.write(
+                json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+                + "\n"
+            )
+            count += 1
+        tmp_path = Path(tmp.name)
+    tmp_path.replace(target)
+    return count
 
 
 def read_parquet(path: str | Path) -> pd.DataFrame:
