@@ -25,31 +25,37 @@ import pandas as pd
 from seshat.data.io import read_parquet, write_parquet
 
 SPLIT_NAMES = ("train", "validation", "calibration", "test")
+TRAIN_SPLITS = ("train", "validation", "calibration")
 DEFAULT_RATIOS = {"train": 0.64, "validation": 0.12, "calibration": 0.08, "test": 0.16}
 
 
+def _split_names(ratios: dict[str, float]) -> tuple[str, ...]:
+    unknown = set(ratios) - set(SPLIT_NAMES)
+    if unknown or len(ratios) < 2:
+        raise ValueError(f"Split ratios must use at least two of {list(SPLIT_NAMES)}")
+    return tuple(name for name in SPLIT_NAMES if name in ratios)
+
+
 def _counts(n: int, ratios: dict[str, float]) -> dict[str, int]:
-    """Largest-remainder allocation of ``n`` families, with at least one per split."""
-    if set(ratios) != set(SPLIT_NAMES):
-        raise ValueError(f"Split ratios must define exactly {list(SPLIT_NAMES)}")
-    if any(ratio <= 0 for ratio in ratios.values()):
+    """Largest-remainder allocation of ``n`` groups, with at least one per split."""
+    names = _split_names(ratios)
+    if any(ratios[name] <= 0 for name in names):
         raise ValueError("Every split ratio must be positive")
     if abs(sum(ratios.values()) - 1.0) > 1e-9:
         raise ValueError("Split ratios must sum to 1.0")
-    if n < len(SPLIT_NAMES):
+    if n < len(names):
         raise ValueError(
-            f"Need at least {len(SPLIT_NAMES)} prompt families to create non-empty "
-            f"splits; got {n}"
+            f"Need at least {len(names)} prompt families to create non-empty splits; got {n}"
         )
-    raw = {name: n * ratios[name] for name in SPLIT_NAMES}
+    raw = {name: n * ratios[name] for name in names}
     counts = {name: int(value) for name, value in raw.items()}
     remainder = n - sum(counts.values())
-    order = sorted(SPLIT_NAMES, key=lambda name: raw[name] - counts[name], reverse=True)
+    order = sorted(names, key=lambda name: raw[name] - counts[name], reverse=True)
     for name in order[:remainder]:
         counts[name] += 1
-    for name in SPLIT_NAMES:
+    for name in names:
         if counts[name] == 0:
-            donor = max(SPLIT_NAMES, key=lambda split: counts[split])
+            donor = max(names, key=lambda split: counts[split])
             counts[donor] -= 1
             counts[name] = 1
     return counts
@@ -60,21 +66,33 @@ def assign_grouped_splits(
     *,
     seed: int = 1729,
     ratios: dict[str, float] | None = None,
+    group_column: str = "prompt_family_id",
+    stratify_column: str = "category",
 ) -> pd.DataFrame:
-    """Return one ``(prompt_family_id, category, split)`` row per prompt family."""
+    """Return one ``(group, stratum, split)`` row per group.
+
+    A group's stratum is its most common ``stratify_column`` value (ties broken by
+    name), so groups that span strata still get exactly one split.
+    """
     ratios = ratios or DEFAULT_RATIOS
-    required = {"prompt_family_id", "category"}
+    required = {group_column, stratify_column}
     missing = required - set(frame.columns)
     if missing:
         raise ValueError(f"Missing split columns: {sorted(missing)}")
-    groups = frame[["prompt_family_id", "category"]].astype(str).drop_duplicates()
-    if groups.empty:
+    pairs = frame[[group_column, stratify_column]].astype(str)
+    if pairs.empty:
         raise ValueError("No prompt families to split (input has no eligible rows)")
-    multi_category = groups.loc[groups["prompt_family_id"].duplicated(), "prompt_family_id"]
-    if not multi_category.empty:
-        raise ValueError(
-            f"Prompt families span multiple categories: {sorted(set(multi_category))[:5]}"
-        )
+    if group_column == "prompt_family_id" and stratify_column == "category":
+        multi = pairs.drop_duplicates().loc[lambda d: d[group_column].duplicated(), group_column]
+        if not multi.empty:
+            raise ValueError(f"Prompt families span multiple categories: {sorted(set(multi))[:5]}")
+    groups = (
+        pairs.value_counts()
+        .reset_index(name="n")
+        .sort_values([group_column, "n", stratify_column], ascending=[True, False, True])
+        .drop_duplicates(group_column)[[group_column, stratify_column]]
+        .rename(columns={group_column: "prompt_family_id", stratify_column: "category"})
+    )
 
     rng = random.Random(seed)
     placed: list[tuple[float, float, str, str]] = []
@@ -89,7 +107,7 @@ def assign_grouped_splits(
     counts = _counts(len(placed), ratios)
     assignments: list[dict[str, str]] = []
     cursor = 0
-    for split_name in SPLIT_NAMES:
+    for split_name in _split_names(ratios):
         for _, _, family_id, category in placed[cursor : cursor + counts[split_name]]:
             assignments.append(
                 {"prompt_family_id": family_id, "category": category, "split": split_name}
@@ -99,7 +117,8 @@ def assign_grouped_splits(
     result = pd.DataFrame(assignments)
     if result["prompt_family_id"].duplicated().any():
         raise AssertionError("Prompt family leaked across splits")
-    return result.sort_values(["split", "category", "prompt_family_id"]).reset_index(drop=True)
+    result = result.sort_values(["split", "category", "prompt_family_id"]).reset_index(drop=True)
+    return result.rename(columns={"prompt_family_id": group_column, "category": stratify_column})
 
 
 def split_to_parquet(

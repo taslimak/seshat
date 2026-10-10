@@ -1,0 +1,51 @@
+{
+  "pricing_version": "fixture-1",
+  "currency": "USD",
+  "unit": "USD per 1M tokens",
+  "retrieved_at": null,
+  "notes": "TEST FIXTURE prices for mock providers. Not real prices; costs computed from them are labelled test_fixture.",
+  "entries": [
+    {
+      "provider": "mock-anthropic",
+      "model": "mock-claude",
+      "effective_from": "2000-01-01",
+      "effective_to": null,
+      "input": "3",
+      "output": "15",
+      "cache_read": "0.30",
+      "cache_write_5m": "3.75",
+      "cache_write_1h": "6",
+      "source_url": "fixture"
+    },
+    {
+      "provider": "mock-openai",
+      "model": "mock-gpt",
+      "effective_from": "2000-01-01",
+      "effective_to": null,
+      "input": "2",
+      "output": "8",
+      "cache_read": "0.50",
+      "source_url": "fixture"
+    },
+    {
+      "provider": "mock-openai",
+      "model": "mock-v1",
+      "effective_from": "2000-01-01",
+      "effective_to": null,
+      "input": "2",
+      "output": "8",
+      "cache_read": "0.50",
+      "source_url": "fixture"
+    },
+    {
+      "provider": "mock-gemini",
+      "model": "mock-gemini",
+      "effective_from": "2000-01-01",
+      "effective_to": null,
+      "input": "0.30",
+      "output": "2.50",
+      "cache_read": "0.03",
+      "source_url": "fixture"
+    }
+  ]
+}

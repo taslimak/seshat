@@ -51,9 +51,7 @@ def test_splits_are_deterministic_for_a_seed() -> None:
 
 def test_large_corpus_is_approximately_stratified() -> None:
     assignments = assign_grouped_splits(_families(50, 4), seed=11)
-    shares = (
-        assignments.groupby("category")["split"].value_counts(normalize=True).unstack()
-    )
+    shares = assignments.groupby("category")["split"].value_counts(normalize=True).unstack()
     assert ((shares["train"] - 0.64).abs() < 0.05).all()
     assert ((shares["test"] - 0.16).abs() < 0.05).all()
 

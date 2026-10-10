@@ -1,0 +1,46 @@
+# LIVE pilot: real provider calls. Never runs without BOTH:
+#   python -m seshat.data.cli collect --config configs/experiments/live_pilot.yaml \
+#       --execute-live --max-cost-usd 5
+# Requires ANTHROPIC_API_KEY / OPENAI_API_KEY / GEMINI_API_KEY (or GOOGLE_API_KEY) and
+# pip install -e ".[data,providers]". Review prices in configs/pricing/ first.
+experiment_id: live_pilot_v1
+description: Small paid pilot across Anthropic, OpenAI and Gemini to validate live collection.
+seed: 7
+
+prompts:
+  generate: {count: 60, seed: 7}
+  bank_files: [prompts/hand_authored.jsonl]
+  require_approved_for_live: true
+
+targets:
+  - provider: anthropic
+    model: claude-haiku-5-5
+    efforts: [low, high]
+    max_output_tokens: [1024]
+  - provider: openai
+    model: gpt-6-luna
+    efforts: [low, high]
+    max_output_tokens: [1024]
+  - provider: gemini
+    model: gemini-3.5-flash-lite
+    efforts: [low, high]
+    max_output_tokens: [1024]
+
+sampling: {configs_per_prompt: 1}
+repetitions: {fraction: 0.1, count: 2}
+budget:
+  max_requests: 120
+  max_cost_usd: 5
+
+execution:
+  concurrency: 4
+  per_provider_concurrency: 2
+  timeout_seconds: 120
+  max_retries: 3
+  backoff_base_seconds: 2
+  backoff_max_seconds: 60
+  rate_limits:
+    anthropic: {requests_per_minute: 30}
+    openai: {requests_per_minute: 30}
+    gemini: {requests_per_minute: 30}
+  preflight: native

@@ -1,5 +1,12 @@
 # Dataset Creation Workflow
 
+> **Status (2026-10-10):** this is the original design rationale. The implemented
+> pipeline is described in [DATA_PIPELINE_ARCHITECTURE.md](DATA_PIPELINE_ARCHITECTURE.md),
+> [DATA_COLLECTION_GUIDE.md](DATA_COLLECTION_GUIDE.md) and [DATA_SCHEMA.md](DATA_SCHEMA.md).
+> Where file names, commands or schemas below differ from those documents (for
+> example `build-manifest`/`run` → `collect`, JSON manifests → `configs/data_collection.yaml`),
+> the newer documents are authoritative. The principles in section 1 still apply.
+
 This document is the canonical implementation guide for creating Seshat's training and evaluation datasets.
 
 The objective is to build the **smallest scientifically valid data factory** that can turn controlled LLM requests into reproducible, versioned ML datasets without manually editing rows.

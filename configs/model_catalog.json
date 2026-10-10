@@ -1,0 +1,603 @@
+{
+  "catalog_version": "2026-10-10",
+  "notes": "Capabilities follow official API references and SDK signatures checked on 2026-10-10 (anthropic 1.13.0, openai 3.28.0, google-genai 2.29.0). 'verified': true only where per-model support was documented; otherwise the family-level documented controls apply and settings outside them are rejected. Unknown limits are null. Seshat's 'effort' maps to Anthropic output_config.effort, OpenAI reasoning.effort and Gemini thinking_config.thinking_level.",
+  "providers": {
+    "anthropic": {
+      "family": "anthropic",
+      "models": {
+        "claude-fable-5-1": {
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "thinking_modes": [
+            "adaptive",
+            "enabled",
+            "disabled"
+          ],
+          "supports_temperature": false,
+          "supports_top_p": false,
+          "supports_top_k": false,
+          "supports_seed": false,
+          "supports_stop_sequences": true,
+          "supports_tools": true,
+          "supports_parallel_tool_calls": true,
+          "supports_verbosity": false,
+          "supports_response_format": true,
+          "supports_caching": true,
+          "cache_ttls": [
+            "5m",
+            "1h"
+          ],
+          "native_token_counting": true,
+          "context_window": 1000000,
+          "notes": "1M context at standard pricing (pricing docs).",
+          "verified": false
+        },
+        "claude-opus-5-5": {
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "thinking_modes": [
+            "adaptive",
+            "enabled",
+            "disabled"
+          ],
+          "supports_temperature": false,
+          "supports_top_p": false,
+          "supports_top_k": false,
+          "supports_seed": false,
+          "supports_stop_sequences": true,
+          "supports_tools": true,
+          "supports_parallel_tool_calls": true,
+          "supports_verbosity": false,
+          "supports_response_format": true,
+          "supports_caching": true,
+          "cache_ttls": [
+            "5m",
+            "1h"
+          ],
+          "native_token_counting": true,
+          "context_window": 1000000,
+          "verified": false
+        },
+        "claude-sonnet-5-5": {
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "thinking_modes": [
+            "adaptive",
+            "enabled",
+            "disabled"
+          ],
+          "supports_temperature": false,
+          "supports_top_p": false,
+          "supports_top_k": false,
+          "supports_seed": false,
+          "supports_stop_sequences": true,
+          "supports_tools": true,
+          "supports_parallel_tool_calls": true,
+          "supports_verbosity": false,
+          "supports_response_format": true,
+          "supports_caching": true,
+          "cache_ttls": [
+            "5m",
+            "1h"
+          ],
+          "native_token_counting": true,
+          "context_window": 1000000,
+          "verified": false
+        },
+        "claude-haiku-5-5": {
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "thinking_modes": [
+            "adaptive",
+            "enabled",
+            "disabled"
+          ],
+          "supports_temperature": false,
+          "supports_top_p": false,
+          "supports_top_k": false,
+          "supports_seed": false,
+          "supports_stop_sequences": true,
+          "supports_tools": true,
+          "supports_parallel_tool_calls": true,
+          "supports_verbosity": false,
+          "supports_response_format": true,
+          "supports_caching": true,
+          "cache_ttls": [
+            "5m",
+            "1h"
+          ],
+          "native_token_counting": true,
+          "context_window": null,
+          "notes": "Context window not stated in the docs checked; prompts over 100k tokens are priced higher.",
+          "verified": false
+        }
+      }
+    },
+    "openai": {
+      "family": "openai",
+      "models": {
+        "gpt-6-astra": {
+          "efforts": [
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "thinking_modes": null,
+          "supports_temperature": false,
+          "supports_top_p": false,
+          "supports_top_k": false,
+          "supports_seed": false,
+          "supports_stop_sequences": false,
+          "supports_tools": true,
+          "supports_parallel_tool_calls": true,
+          "supports_verbosity": true,
+          "supports_response_format": true,
+          "supports_caching": true,
+          "cache_ttls": [],
+          "native_token_counting": true,
+          "verified": true,
+          "notes": "Reasoning guide: rejects effort=none."
+        },
+        "gpt-6.1-sol": {
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "thinking_modes": null,
+          "supports_temperature": false,
+          "supports_top_p": false,
+          "supports_top_k": false,
+          "supports_seed": false,
+          "supports_stop_sequences": false,
+          "supports_tools": true,
+          "supports_parallel_tool_calls": true,
+          "supports_verbosity": true,
+          "supports_response_format": true,
+          "supports_caching": true,
+          "cache_ttls": [],
+          "native_token_counting": true,
+          "verified": true,
+          "notes": "Reasoning guide: supports neither none nor minimal."
+        },
+        "gpt-6-sol": {
+          "efforts": [
+            "none",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "thinking_modes": null,
+          "supports_temperature": false,
+          "supports_top_p": false,
+          "supports_top_k": false,
+          "supports_seed": false,
+          "supports_stop_sequences": false,
+          "supports_tools": true,
+          "supports_parallel_tool_calls": true,
+          "supports_verbosity": true,
+          "supports_response_format": true,
+          "supports_caching": true,
+          "cache_ttls": [],
+          "native_token_counting": true,
+          "verified": false
+        },
+        "gpt-6-luna": {
+          "efforts": [
+            "none",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "thinking_modes": null,
+          "supports_temperature": false,
+          "supports_top_p": false,
+          "supports_top_k": false,
+          "supports_seed": false,
+          "supports_stop_sequences": false,
+          "supports_tools": true,
+          "supports_parallel_tool_calls": true,
+          "supports_verbosity": true,
+          "supports_response_format": true,
+          "supports_caching": true,
+          "cache_ttls": [],
+          "native_token_counting": true,
+          "verified": false
+        },
+        "gpt-5.6-sol": {
+          "efforts": [
+            "none",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "thinking_modes": null,
+          "supports_temperature": false,
+          "supports_top_p": false,
+          "supports_top_k": false,
+          "supports_seed": false,
+          "supports_stop_sequences": false,
+          "supports_tools": true,
+          "supports_parallel_tool_calls": true,
+          "supports_verbosity": true,
+          "supports_response_format": true,
+          "supports_caching": true,
+          "cache_ttls": [],
+          "native_token_counting": true,
+          "verified": false
+        },
+        "gpt-5.6-terra": {
+          "efforts": [
+            "none",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "thinking_modes": null,
+          "supports_temperature": false,
+          "supports_top_p": false,
+          "supports_top_k": false,
+          "supports_seed": false,
+          "supports_stop_sequences": false,
+          "supports_tools": true,
+          "supports_parallel_tool_calls": true,
+          "supports_verbosity": true,
+          "supports_response_format": true,
+          "supports_caching": true,
+          "cache_ttls": [],
+          "native_token_counting": true,
+          "verified": false
+        },
+        "gpt-5.6-luna": {
+          "efforts": [
+            "none",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "thinking_modes": null,
+          "supports_temperature": false,
+          "supports_top_p": false,
+          "supports_top_k": false,
+          "supports_seed": false,
+          "supports_stop_sequences": false,
+          "supports_tools": true,
+          "supports_parallel_tool_calls": true,
+          "supports_verbosity": true,
+          "supports_response_format": true,
+          "supports_caching": true,
+          "cache_ttls": [],
+          "native_token_counting": true,
+          "verified": false
+        },
+        "gpt-5.5": {
+          "efforts": [
+            "none",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "thinking_modes": null,
+          "supports_temperature": false,
+          "supports_top_p": false,
+          "supports_top_k": false,
+          "supports_seed": false,
+          "supports_stop_sequences": false,
+          "supports_tools": true,
+          "supports_parallel_tool_calls": true,
+          "supports_verbosity": true,
+          "supports_response_format": true,
+          "supports_caching": true,
+          "cache_ttls": [],
+          "native_token_counting": true,
+          "verified": false
+        }
+      }
+    },
+    "gemini": {
+      "family": "gemini",
+      "models": {
+        "gemini-3.8-flash": {
+          "thinking_modes": null,
+          "supports_temperature": true,
+          "supports_top_p": true,
+          "supports_top_k": true,
+          "supports_seed": true,
+          "supports_stop_sequences": true,
+          "supports_tools": true,
+          "supports_parallel_tool_calls": false,
+          "supports_verbosity": false,
+          "supports_response_format": true,
+          "supports_caching": false,
+          "cache_ttls": [],
+          "native_token_counting": true,
+          "efforts": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "verified": true
+        },
+        "gemini-3.6-flash": {
+          "thinking_modes": null,
+          "supports_temperature": true,
+          "supports_top_p": true,
+          "supports_top_k": true,
+          "supports_seed": true,
+          "supports_stop_sequences": true,
+          "supports_tools": true,
+          "supports_parallel_tool_calls": false,
+          "supports_verbosity": false,
+          "supports_response_format": true,
+          "supports_caching": false,
+          "cache_ttls": [],
+          "native_token_counting": true,
+          "efforts": [
+            "minimal",
+            "low",
+            "medium",
+            "high"
+          ],
+          "verified": true
+        },
+        "gemini-3.5-flash-lite": {
+          "thinking_modes": null,
+          "supports_temperature": true,
+          "supports_top_p": true,
+          "supports_top_k": true,
+          "supports_seed": true,
+          "supports_stop_sequences": true,
+          "supports_tools": true,
+          "supports_parallel_tool_calls": false,
+          "supports_verbosity": false,
+          "supports_response_format": true,
+          "supports_caching": false,
+          "cache_ttls": [],
+          "native_token_counting": true,
+          "efforts": [
+            "minimal",
+            "low",
+            "medium",
+            "high"
+          ],
+          "verified": true
+        },
+        "gemini-3.1-pro-preview": {
+          "thinking_modes": null,
+          "supports_temperature": true,
+          "supports_top_p": true,
+          "supports_top_k": true,
+          "supports_seed": true,
+          "supports_stop_sequences": true,
+          "supports_tools": true,
+          "supports_parallel_tool_calls": false,
+          "supports_verbosity": false,
+          "supports_response_format": true,
+          "supports_caching": false,
+          "cache_ttls": [],
+          "native_token_counting": true,
+          "efforts": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "verified": true
+        },
+        "gemini-2.5-pro": {
+          "thinking_modes": null,
+          "supports_temperature": true,
+          "supports_top_p": true,
+          "supports_top_k": true,
+          "supports_seed": true,
+          "supports_stop_sequences": true,
+          "supports_tools": true,
+          "supports_parallel_tool_calls": false,
+          "supports_verbosity": false,
+          "supports_response_format": true,
+          "supports_caching": false,
+          "cache_ttls": [],
+          "native_token_counting": true,
+          "efforts": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "verified": true
+        },
+        "gemini-2.5-flash": {
+          "thinking_modes": null,
+          "supports_temperature": true,
+          "supports_top_p": true,
+          "supports_top_k": true,
+          "supports_seed": true,
+          "supports_stop_sequences": true,
+          "supports_tools": true,
+          "supports_parallel_tool_calls": false,
+          "supports_verbosity": false,
+          "supports_response_format": true,
+          "supports_caching": false,
+          "cache_ttls": [],
+          "native_token_counting": true,
+          "efforts": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "verified": true
+        }
+      }
+    },
+    "mock-anthropic": {
+      "family": "anthropic",
+      "models": {
+        "mock-claude": {
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "thinking_modes": [
+            "adaptive",
+            "enabled",
+            "disabled"
+          ],
+          "supports_temperature": false,
+          "supports_top_p": false,
+          "supports_top_k": false,
+          "supports_seed": false,
+          "supports_stop_sequences": true,
+          "supports_tools": true,
+          "supports_parallel_tool_calls": true,
+          "supports_verbosity": false,
+          "supports_response_format": true,
+          "supports_caching": true,
+          "cache_ttls": [
+            "5m",
+            "1h"
+          ],
+          "native_token_counting": true,
+          "context_window": 200000,
+          "max_output_tokens": 32000,
+          "verified": true,
+          "notes": "Offline test fixture emulating Anthropic usage payloads."
+        }
+      }
+    },
+    "mock-openai": {
+      "family": "openai",
+      "models": {
+        "mock-gpt": {
+          "efforts": [
+            "none",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "thinking_modes": null,
+          "supports_temperature": false,
+          "supports_top_p": false,
+          "supports_top_k": false,
+          "supports_seed": false,
+          "supports_stop_sequences": false,
+          "supports_tools": true,
+          "supports_parallel_tool_calls": true,
+          "supports_verbosity": true,
+          "supports_response_format": true,
+          "supports_caching": true,
+          "cache_ttls": [],
+          "native_token_counting": true,
+          "context_window": 200000,
+          "max_output_tokens": 32000,
+          "verified": true,
+          "notes": "Offline test fixture emulating OpenAI usage payloads."
+        },
+        "mock-v1": {
+          "efforts": [
+            "none",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "thinking_modes": null,
+          "supports_temperature": false,
+          "supports_top_p": false,
+          "supports_top_k": false,
+          "supports_seed": false,
+          "supports_stop_sequences": false,
+          "supports_tools": true,
+          "supports_parallel_tool_calls": true,
+          "supports_verbosity": true,
+          "supports_response_format": true,
+          "supports_caching": true,
+          "cache_ttls": [],
+          "native_token_counting": true,
+          "context_window": 200000,
+          "max_output_tokens": 32000,
+          "verified": true,
+          "notes": "Legacy pilot model name."
+        }
+      }
+    },
+    "mock-gemini": {
+      "family": "gemini",
+      "models": {
+        "mock-gemini": {
+          "thinking_modes": null,
+          "supports_temperature": true,
+          "supports_top_p": true,
+          "supports_top_k": true,
+          "supports_seed": true,
+          "supports_stop_sequences": true,
+          "supports_tools": true,
+          "supports_parallel_tool_calls": false,
+          "supports_verbosity": false,
+          "supports_response_format": true,
+          "supports_caching": false,
+          "cache_ttls": [],
+          "native_token_counting": true,
+          "efforts": [
+            "minimal",
+            "low",
+            "medium",
+            "high"
+          ],
+          "context_window": 200000,
+          "max_output_tokens": 32000,
+          "verified": true,
+          "notes": "Offline test fixture emulating Gemini usage payloads."
+        }
+      }
+    }
+  }
+}

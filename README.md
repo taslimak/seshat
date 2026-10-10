@@ -5,23 +5,23 @@ Seshat is a token-usage prediction service for AI prompts. It estimates likely o
 ## Implemented vertical slices
 
 1. FastAPI prediction service with the existing baseline predictor.
-2. Controlled-experiment data factory for reproducible training/evaluation data.
-3. Versioned record store (request features, predictions, observed usage) with
-   explicit real/synthetic provenance, deduplication, quarantine and privacy-safe
-   retention. See [Dataset Pipeline](docs/DATASET_PIPELINE.md).
-
-The data path is:
+2. Data collection and engineering pipeline (schema `1.0.0`): deterministic prompt
+   generation, balanced experiment design, a resumable budget-capped collector for
+   Anthropic, OpenAI and Gemini (official SDKs) plus offline mock providers,
+   consented telemetry and authorized log import, provider-specific usage
+   normalization, validation, leakage-safe training datasets and CSV export.
+   See [architecture](docs/DATA_PIPELINE_ARCHITECTURE.md),
+   [collection guide](docs/DATA_COLLECTION_GUIDE.md) and [schema](docs/DATA_SCHEMA.md).
 
 ```text
-prompt bank
--> experiment manifest
--> provider adapter
--> immutable JSONL observations
--> normalized Parquet
--> quality validation
--> leakage-safe feature matrix
--> prompt-family grouped splits
--> versioned release
+generate / prompt bank / authorized logs / consented telemetry
+-> experiment design (balanced, stratified, repetitions, budget)
+-> collector (dry-run default; live needs --execute-live --max-cost-usd)
+-> raw append-only event log (raw provider usage kept)
+-> normalized Parquet: requests | preflight | observations | predictions
+-> validation + quality report
+-> leakage-safe, versioned training datasets
+-> CSV export + data dictionary
 ```
 
 ## Quick start
@@ -33,65 +33,64 @@ pip install -e ".[dev,data]"
 uvicorn seshat.api:app --reload
 ```
 
-For paid provider experiments:
+For live provider experiments (official Anthropic, OpenAI and Gemini SDKs):
 
 ```bash
-pip install -e ".[providers]"
+pip install -e ".[dev,data,providers]"
 ```
 
-Set `OPENAI_API_KEY` and/or `ANTHROPIC_API_KEY` in your environment. Never commit keys.
-Real provider calls are **disabled by default**. `seshat-data run` refuses a manifest
-with a non-mock provider unless you pass `--allow-provider-calls` or set
-`SESHAT_ALLOW_PROVIDER_CALLS=1`.
+Set `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` and/or `GEMINI_API_KEY` in your
+environment (see `.env.example`). Never commit keys. Paid calls are **off by
+default**: `seshat-data collect` sends nothing to a real provider unless you pass
+both `--execute-live` and `--max-cost-usd`.
 
 ## Test
 
 ```bash
 pytest
 ruff check .
+mypy src
 ```
 
-## Run the complete data factory without API spend
+Live adapter tests are skipped unless `SESHAT_LIVE_TESTS=1` and the provider key
+are set.
+
+## Run the data pipeline without API spend
 
 ```bash
-seshat-data build-manifest --config configs/experiments/pilot_001.json --output data/manifests/pilot_001.parquet
-seshat-data run --manifest data/manifests/pilot_001.parquet --prompts prompts/hand_authored.jsonl --output data/raw/pilot_001.jsonl
-seshat-data normalize --input data/raw/pilot_001.jsonl --output data/normalized/pilot_001.parquet
-seshat-data validate --input data/normalized/pilot_001.parquet --output data/normalized/pilot_001.validated.parquet
-seshat-data features --input data/normalized/pilot_001.validated.parquet --output data/features/pilot_001.parquet --label-origin synthetic
-seshat-data split --input data/features/pilot_001.parquet --output data/splits/pilot_001.parquet
-seshat-data profile --input data/normalized/pilot_001.validated.parquet --output data/profiles/pilot_001.json
-seshat-data release --features data/features/pilot_001.parquet --splits data/splits/pilot_001.parquet --version 0.0.1
+seshat-data collect --config configs/data_collection.yaml --dry-run   # plan + cost estimate
+seshat-data collect --config configs/data_collection.yaml             # mock providers, offline
+seshat-data validate
+seshat-data export --format csv
+seshat-data prepare-training --version 0.1.0 --label-origin synthetic
+seshat-data stats
 ```
 
-Mock-adapter outcomes are **synthetic**. The feature builder uses real labels by
-default, so the mock pilot needs `--label-origin synthetic`, and its release is
-written as `data/releases/dataset_v0.0.1_synthetic/`, marked "pipeline testing only".
+Mock-provider outcomes are test fixtures (`label_quality=synthetic`).
+`prepare-training` uses real labels by default and refuses mock data unless you
+pass `--label-origin synthetic`, which writes `data/training/dataset_v0.1.0_synthetic/`.
+Example outputs are committed in `data/fixtures/offline_example/`.
 
-## Record store quick start (no API spend)
+## Live pilot
 
 ```bash
-seshat-data ingest --record-type request_features --input examples/synthetic_v1/request_features.jsonl
-seshat-data ingest --record-type observed_usage --input examples/synthetic_v1/observed_usage.jsonl
-seshat-data ingest-experiment --raw data/raw/pilot_001.jsonl --prompts prompts/hand_authored.jsonl
-seshat-data predict                # baseline predictions from stored, privacy-safe features
-seshat-data compare                # predicted vs observed, reported per data origin
-seshat-data store-summary
+seshat-data collect --config configs/experiments/live_pilot.yaml --dry-run
+seshat-data collect --config configs/experiments/live_pilot.yaml --execute-live --max-cost-usd 5
 ```
 
-`data/records.csv` is a human-readable CSV view of the example observations.
-Parquet/JSONL remain canonical.
+Check `configs/pricing/` against the providers' pricing pages first.
 
 ## Dataset invariants
 
-- Raw observations are append-only.
+- Raw collection events are append-only.
 - Provider-native usage payloads are preserved.
 - Post-inference fields cannot enter training features.
 - Repeats and prompt-family variants stay in the same split.
 - Truncated outputs are marked as censored.
-- Every record is labelled `real` or `synthetic`; synthetic outcomes never become real labels.
+- Every record carries its `source_type` and `label_quality`; synthetic or mock outcomes never become real labels.
+- Preflight token counts and predictions are never stored as observed usage.
 - Prompt text is not stored by default (keyed hash + request-time features only).
 - Customer telemetry does not automatically become training data.
 - Protected test data is not used for iterative tuning.
 
-See [Dataset Creation Workflow](docs/DATASET_CREATION_WORKFLOW.md), [Dataset Implementation](docs/DATASET_IMPLEMENTATION.md) and [Dataset Pipeline](docs/DATASET_PIPELINE.md).
+See [Data Pipeline Architecture](docs/DATA_PIPELINE_ARCHITECTURE.md), [Data Collection Guide](docs/DATA_COLLECTION_GUIDE.md), [Data Schema](docs/DATA_SCHEMA.md) and the original design rationale in [Dataset Creation Workflow](docs/DATASET_CREATION_WORKFLOW.md).

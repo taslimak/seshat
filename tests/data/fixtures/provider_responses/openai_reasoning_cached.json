@@ -1,0 +1,33 @@
+{
+  "id": "resp_fixture_001",
+  "object": "response",
+  "model": "gpt-6-sol-2026-09-01",
+  "status": "completed",
+  "incomplete_details": null,
+  "output": [
+    {
+      "type": "reasoning",
+      "summary": []
+    },
+    {
+      "type": "message",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "Sample visible answer."
+        }
+      ]
+    }
+  ],
+  "usage": {
+    "input_tokens": 2048,
+    "input_tokens_details": {
+      "cached_tokens": 1024
+    },
+    "output_tokens": 1186,
+    "output_tokens_details": {
+      "reasoning_tokens": 1024
+    },
+    "total_tokens": 3234
+  }
+}

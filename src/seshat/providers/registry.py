@@ -1,27 +1,30 @@
-"""Provider registry, provenance mapping and the paid-call safety gate."""
+"""Provider registry and the paid-call authorization gate."""
 
 from __future__ import annotations
 
-import os
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 
-from seshat.data.provenance import DataOrigin, DataSource, Provenance
+from seshat.data.schemas.enums import SourceType
 from seshat.providers.anthropic import AnthropicAdapter
 from seshat.providers.base import ProviderAdapter
-from seshat.providers.mock import MockAdapter
+from seshat.providers.gemini import GeminiAdapter
+from seshat.providers.mock import MockAnthropicAdapter, MockGeminiAdapter, MockOpenAIAdapter
 from seshat.providers.openai import OpenAIAdapter
 
-ALLOW_PROVIDER_CALLS_ENV = "SESHAT_ALLOW_PROVIDER_CALLS"
+AdapterFactory = Callable[[], ProviderAdapter]
 
 PROVIDERS: dict[str, type[ProviderAdapter]] = {
-    "openai": OpenAIAdapter,
     "anthropic": AnthropicAdapter,
-    "mock": MockAdapter,
+    "openai": OpenAIAdapter,
+    "gemini": GeminiAdapter,
+    "mock-anthropic": MockAnthropicAdapter,
+    "mock-openai": MockOpenAIAdapter,
+    "mock-gemini": MockGeminiAdapter,
 }
 
 
 class ProviderCallsNotAllowedError(RuntimeError):
-    """Raised before any request when real provider calls have not been enabled."""
+    """Raised before any request when live (paid) calls were not explicitly authorized."""
 
 
 def adapter_class(provider: str) -> type[ProviderAdapter]:
@@ -31,36 +34,25 @@ def adapter_class(provider: str) -> type[ProviderAdapter]:
         raise ValueError(f"Unsupported provider {provider!r}; known: {sorted(PROVIDERS)}") from exc
 
 
-def provider_calls_allowed(explicit: bool | None = None) -> bool:
-    """Explicit flag wins; otherwise ``SESHAT_ALLOW_PROVIDER_CALLS`` must be truthy."""
-    if explicit is not None:
-        return explicit
-    return os.environ.get(ALLOW_PROVIDER_CALLS_ENV, "").strip().lower() in {"1", "true", "yes"}
+def live_providers(providers: Iterable[str]) -> list[str]:
+    return sorted({name for name in providers if adapter_class(name).makes_external_calls})
 
 
-def ensure_provider_calls_allowed(providers: Iterable[str], explicit: bool | None = None) -> None:
-    """Fail fast if any provider would make external (potentially paid) calls."""
-    external = sorted(
-        {name for name in providers if adapter_class(name).makes_external_calls}
-    )
-    if external and not provider_calls_allowed(explicit):
+def ensure_live_calls_authorized(providers: Iterable[str], execute_live: bool) -> None:
+    """Fail fast unless live calls were authorized explicitly (CLI ``--execute-live``)."""
+    live = live_providers(providers)
+    if live and not execute_live:
         raise ProviderCallsNotAllowedError(
-            f"Manifest requires real provider calls ({', '.join(external)}), which are "
-            f"disabled by default. Re-run with --allow-provider-calls or set "
-            f"{ALLOW_PROVIDER_CALLS_ENV}=1 after reviewing the expected spend."
+            f"The plan includes live providers ({', '.join(live)}). Live API calls are off "
+            "by default; re-run with --execute-live and a --max-cost-usd budget, or use "
+            "--dry-run / mock providers."
         )
 
 
-def provenance_for_provider(provider: str, experiment_id: str | None = None) -> Provenance:
-    """Provenance of results produced by a provider adapter in a controlled experiment."""
-    cls = adapter_class(provider)
-    if cls.data_origin == DataOrigin.SYNTHETIC:
-        source = DataSource.MOCK_ADAPTER
-    else:
-        source = DataSource.CONTROLLED_EXPERIMENT
-    return Provenance(
-        data_origin=cls.data_origin,
-        source=source,
-        generator=f"{cls.__module__}.{cls.__name__}",
-        experiment_id=experiment_id,
+def source_type_for(
+    provider: str, live_source: SourceType = SourceType.CONTROLLED_EXPERIMENT
+) -> SourceType:
+    """Mock providers always produce test fixtures; real providers produce ``live_source``."""
+    return (
+        SourceType.TEST_FIXTURE if not adapter_class(provider).makes_external_calls else live_source
     )

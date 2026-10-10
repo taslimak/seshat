@@ -1,0 +1,22 @@
+{
+  "response_id": "gem_fixture_003",
+  "model_version": "gemini-3.5-flash-lite",
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "Partial"
+          }
+        ]
+      },
+      "finish_reason": "MAX_TOKENS"
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 80,
+    "candidates_token_count": 256,
+    "thoughts_token_count": 0,
+    "total_token_count": 336
+  }
+}

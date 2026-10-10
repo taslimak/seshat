@@ -1,0 +1,28 @@
+{
+  "response_id": "gem_fixture_001",
+  "model_version": "gemini-3.8-flash-001",
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "thought summary",
+            "thought": true
+          },
+          {
+            "text": "Sample visible answer."
+          }
+        ]
+      },
+      "finish_reason": "STOP"
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 500,
+    "cached_content_token_count": 300,
+    "candidates_token_count": 120,
+    "thoughts_token_count": 400,
+    "total_token_count": 1020,
+    "traffic_type": "ON_DEMAND"
+  }
+}

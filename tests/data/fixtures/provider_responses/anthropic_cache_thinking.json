@@ -1,0 +1,32 @@
+{
+  "id": "msg_fixture_001",
+  "type": "message",
+  "model": "claude-opus-5-5",
+  "stop_reason": "end_turn",
+  "content": [
+    {
+      "type": "thinking",
+      "thinking": "...",
+      "signature": "sig"
+    },
+    {
+      "type": "text",
+      "text": "Sample visible answer."
+    }
+  ],
+  "usage": {
+    "input_tokens": 2048,
+    "cache_read_input_tokens": 1800,
+    "cache_creation_input_tokens": 248,
+    "cache_creation": {
+      "ephemeral_5m_input_tokens": 148,
+      "ephemeral_1h_input_tokens": 100
+    },
+    "output_tokens": 503,
+    "output_tokens_details": {
+      "thinking_tokens": 200
+    },
+    "server_tool_use": null,
+    "service_tier": "standard"
+  }
+}

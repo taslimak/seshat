@@ -24,15 +24,17 @@ def _read_source(source: Path) -> pd.DataFrame:
     )
 
 
-def _neutralize_formulas(frame: pd.DataFrame) -> pd.DataFrame:
+def neutralize_formulas(frame: pd.DataFrame) -> pd.DataFrame:
     """Prefix text cells that spreadsheets would execute as formulas with a quote."""
     result = frame.copy()
     for column in result.columns:
         if result[column].dtype == object:
             result[column] = result[column].map(
-                lambda value: f"'{value}"
-                if isinstance(value, str) and value.startswith(_FORMULA_PREFIXES)
-                else value
+                lambda value: (
+                    f"'{value}"
+                    if isinstance(value, str) and value.startswith(_FORMULA_PREFIXES)
+                    else value
+                )
             )
     return result
 
@@ -55,7 +57,7 @@ def export_csv(
     if limit is not None:
         frame = frame.head(limit)
     if sanitize_formulas:
-        frame = _neutralize_formulas(frame)
+        frame = neutralize_formulas(frame)
     target = Path(output_path)
     target.parent.mkdir(parents=True, exist_ok=True)
     frame.to_csv(target, index=False)

@@ -1,0 +1,24 @@
+{
+  "id": "resp_fixture_003",
+  "object": "response",
+  "model": "gpt-6-luna",
+  "status": "completed",
+  "output": [
+    {
+      "type": "function_call",
+      "name": "get_weather",
+      "arguments": "{\"city\":\"Oslo\"}"
+    }
+  ],
+  "usage": {
+    "input_tokens": 410,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
+    "output_tokens": 22,
+    "output_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "total_tokens": 432
+  }
+}

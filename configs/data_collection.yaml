@@ -1,0 +1,73 @@
+# Seshat data collection — default OFFLINE experiment.
+# Runs entirely against mock providers that emit realistic OpenAI / Anthropic /
+# Gemini usage payloads. Everything it produces is labelled source_type=test_fixture.
+# For a live experiment see configs/experiments/live_pilot.yaml (requires
+# --execute-live and --max-cost-usd).
+experiment_id: offline_pilot_v1
+description: Offline end-to-end pilot over generated prompts and three mock providers.
+seed: 42
+
+prompts:
+  generate:
+    count: 120          # >= 100 deterministic prompts across all 17 templates
+    seed: 42
+  bank_files: []        # e.g. [prompts/hand_authored.jsonl]
+  require_approved_for_live: true
+
+strata:                 # measured prompt length strata (words of all text sent)
+  short_max_words: 80
+  medium_max_words: 600
+
+targets:
+  - provider: mock-anthropic
+    model: mock-claude
+    efforts: [low, high]
+    thinking_modes: [adaptive, disabled]
+    max_output_tokens: [512, 4096]
+    caching: [false, true]
+    cache_ttl: 5m
+    structured_output: [false, true]
+  - provider: mock-openai
+    model: mock-gpt
+    efforts: [minimal, medium, high]
+    max_output_tokens: [512, 4096]
+    verbosity: [null, low]
+    caching: [false, true]
+  - provider: mock-gemini
+    model: mock-gemini
+    efforts: [low, high]
+    max_output_tokens: [512, 4096]
+    temperature: [null, 0.7]
+
+sampling:
+  method: balanced_stratified
+  configs_per_prompt: 3
+
+repetitions:            # repeated identical requests to estimate output variance
+  fraction: 0.1
+  count: 3
+
+budget:
+  max_requests: 420
+  max_cost_usd: null    # fixture prices only; live runs must also pass --max-cost-usd
+
+execution:
+  concurrency: 8
+  per_provider_concurrency: 4
+  timeout_seconds: 60
+  max_retries: 3
+  backoff_base_seconds: 0.0   # mocks: no real waiting
+  backoff_max_seconds: 0.0
+  rate_limits:
+    mock-anthropic: {requests_per_minute: 100000}
+    mock-openai: {requests_per_minute: 100000}
+    mock-gemini: {requests_per_minute: 100000}
+  preflight: native
+  preflight_discrepancy_tolerance: 0.1
+
+privacy:
+  store_prompt_text: false
+  store_response_text: false
+
+storage:
+  root: data
