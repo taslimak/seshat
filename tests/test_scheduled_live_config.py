@@ -12,13 +12,13 @@ def test_limits_and_rotation() -> None:
     eastern = ZoneInfo("America/New_York")
     morning = make_config(
         provider="openai",
-        model="gpt-6-luna",
+        model="gpt-6.1-sol",
         now=datetime(2026, 10, 10, 9, 17, tzinfo=eastern),
         storage_root="/var/lib/seshat/data",
     )
     evening = make_config(
         provider="openai",
-        model="gpt-6-luna",
+        model="gpt-6.1-sol",
         now=datetime(2026, 10, 10, 21, 17, tzinfo=eastern),
         storage_root="/var/lib/seshat/data",
     )
@@ -41,7 +41,7 @@ def test_rejects_unverified_model_and_ephemeral_paths() -> None:
     with pytest.raises(ValueError, match="absolute"):
         make_config(
             provider="openai",
-            model="gpt-6-luna",
+            model="gpt-6.1-sol",
             now=now,
             storage_root="data",
         )
