@@ -70,7 +70,9 @@ class SharedBudgetLedger:
                 "INSERT INTO charges (day, month, amount, state) VALUES (?, ?, ?, ?)",
                 (today, month, str(amount), "reserved"),
             )
-            return int(cursor.lastrowid)
+            if cursor.lastrowid is None:
+                raise RuntimeError("SQLite did not return a reservation identifier")
+            return cursor.lastrowid
 
     def settle(self, reservation_id: int, actual: Decimal) -> None:
         """Conservatively retain the reservation if a response has no known cost."""
