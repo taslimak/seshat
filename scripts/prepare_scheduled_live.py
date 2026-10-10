@@ -48,12 +48,14 @@ def make_config(
             "bank_files": [],
             "require_approved_for_live": True,
         },
-        "targets": [{
-            "provider": provider,
-            "model": model,
-            "efforts": [None],
-            "max_output_tokens": [256],
-        }],
+        "targets": [
+            {
+                "provider": provider,
+                "model": model,
+                "efforts": [None],
+                "max_output_tokens": [256],
+            }
+        ],
         "sampling": {"configs_per_prompt": 1},
         "repetitions": {"fraction": 0, "count": 1},
         "budget": {"max_requests": MAX_REQUESTS, "max_cost_usd": MAX_RUN_COST_USD},
