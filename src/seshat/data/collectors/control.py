@@ -60,11 +60,11 @@ class SharedBudgetLedger:
                 "SELECT day, amount FROM charges WHERE month = ?", (month,)
             ).fetchall()
             total_month = sum((Decimal(value) for _, value in rows), Decimal(0))
-            total_day = sum(
-                (Decimal(value) for day, value in rows if day == today), Decimal(0)
-            )
-            if (total_day + amount > self.daily_cap_usd or
-                    total_month + amount > self.monthly_cap_usd):
+            total_day = sum((Decimal(value) for day, value in rows if day == today), Decimal(0))
+            if (
+                total_day + amount > self.daily_cap_usd
+                or total_month + amount > self.monthly_cap_usd
+            ):
                 return None
             cursor = db.execute(
                 "INSERT INTO charges (day, month, amount, state) VALUES (?, ?, ?, ?)",
