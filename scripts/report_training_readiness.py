@@ -3,6 +3,7 @@
 Only validated, verified, uncensored, controlled real API observations qualify.
 This command does not send API requests or train models on insufficient data.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -46,7 +47,8 @@ def readiness(root: str | Path) -> dict[str, Any]:
     if not eligible.empty and not requests.empty:
         joined = eligible[["sample_id"]].merge(
             requests[["sample_id", "prompt_family_id"]].drop_duplicates("sample_id"),
-            on="sample_id", how="left"
+            on="sample_id",
+            how="left",
         )
         result["distinct_prompt_families"] = int(joined["prompt_family_id"].nunique())
     if result["eligible_real_uncensored"] >= 140 and result["distinct_prompt_families"] >= 4:
