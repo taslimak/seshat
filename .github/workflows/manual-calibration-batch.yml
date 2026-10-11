@@ -1,0 +1,83 @@
+name: Manual calibration data batch
+
+on:
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: "API provider (matching GitHub Actions secret required)"
+        type: choice
+        required: true
+        options: [openai, anthropic, gemini]
+      model:
+        description: "Verified model from configs/model_catalog.json"
+        type: string
+        required: true
+      approve_paid_call:
+        description: "Approve up to 180 requests, estimated batch cap $2.00"
+        type: boolean
+        default: false
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: seshat-calibration-paid-batches
+  cancel-in-progress: false
+
+jobs:
+  campaign:
+    if: ${{ inputs.approve_paid_call == true }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      SESHAT_PROVIDER: ${{ inputs.provider }}
+      SESHAT_MODEL: ${{ inputs.model }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      SESHAT_PROMPT_HASH_KEY: ${{ secrets.SESHAT_PROMPT_HASH_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Ensure selected credential and hash key exist
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$SESHAT_PROVIDER" in
+            openai) test -n "${OPENAI_API_KEY:-}" ;;
+            anthropic) test -n "${ANTHROPIC_API_KEY:-}" ;;
+            gemini) test -n "${GEMINI_API_KEY:-}" ;;
+            *) exit 1 ;;
+          esac || { echo "Missing API key"; exit 1; }
+          test -n "${SESHAT_PROMPT_HASH_KEY:-}" || { echo "Missing hash key"; exit 1; }
+      - name: Install Seshat
+        run: python -m pip install -e ".[data,providers]"
+      - name: Build unique calibration batch
+        run: |
+          python scripts/prepare_calibration_campaign.py \
+            --provider "$SESHAT_PROVIDER" --model "$SESHAT_MODEL" \
+            --run-id "${{ github.run_id }}" --output data/calibration.yml
+      - name: Cost estimate (no API dispatch)
+        run: python -m seshat.data.cli collect --config data/calibration.yml --dry-run
+      - name: Authorized real collection (budget-limited, up to 180 calls, $2 estimated cap)
+        run: |
+          python -m seshat.data.cli collect --config data/calibration.yml \
+            --execute-live --max-cost-usd 2.00
+      - name: Validate and export
+        if: always()
+        run: |
+          python -m seshat.data.cli validate || true
+          python -m seshat.data.cli export --format csv --limit 500 || true
+          python -m seshat.data.cli stats > data/calibration_stats.json || true
+      - name: Preserve collected records
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seshat-calibration-${{ github.run_id }}
+          path: data/
+          retention-days: 30
+          if-no-files-found: warn
