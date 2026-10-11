@@ -108,3 +108,18 @@ jobs:
           python -m seshat.data.cli collect \
             --config /tmp/seshat-scheduled.yml \
             --execute-live --max-cost-usd 0.15
+      - name: Validate accumulated real observations
+        run: python -m seshat.data.cli validate --root "$SESHAT_PERSISTENT_DATA_ROOT"
+      - name: Compare heuristic baseline against accumulated labels
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m seshat.data.cli predict --root "$SESHAT_PERSISTENT_DATA_ROOT"
+          python -m seshat.data.cli compare \
+            --root "$SESHAT_PERSISTENT_DATA_ROOT" \
+            --output "$SESHAT_PERSISTENT_DATA_ROOT/exports/baseline_comparison.csv"
+      - name: Report readiness for ML training (no automatic deployment)
+        run: |
+          python scripts/report_training_readiness.py \
+            --root "$SESHAT_PERSISTENT_DATA_ROOT" \
+            --output "$SESHAT_PERSISTENT_DATA_ROOT/reports/training_readiness.json"
