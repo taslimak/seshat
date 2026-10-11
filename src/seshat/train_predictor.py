@@ -29,9 +29,9 @@ MIN_TEST = 20
 
 def _features(frame: pd.DataFrame) -> pd.DataFrame:
     result = frame[FEATURES].copy()
-    result["prompt_word_count"] = pd.to_numeric(
-        result["prompt_word_count"], errors="coerce"
-    ).fillna(0).clip(lower=0)
+    result["prompt_word_count"] = (
+        pd.to_numeric(result["prompt_word_count"], errors="coerce").fillna(0).clip(lower=0)
+    )
     for name in ("requested_model", "requested_effort"):
         result[name] = result[name].fillna("auto" if name == "requested_effort" else "unknown")
         result[name] = result[name].astype(str)
@@ -53,9 +53,7 @@ def _eligible(frame: pd.DataFrame) -> pd.DataFrame:
         & (frame["label_quality"] == "verified")
         & (~frame["target_is_censored"].fillna(True).astype(bool))
     ].copy()
-    frame["actual_output_tokens"] = pd.to_numeric(
-        frame["actual_output_tokens"], errors="coerce"
-    )
+    frame["actual_output_tokens"] = pd.to_numeric(frame["actual_output_tokens"], errors="coerce")
     return frame.loc[frame["actual_output_tokens"].notna()].copy()
 
 
@@ -72,12 +70,18 @@ def train_from_dataset(dataset_dir: str | Path, output_dir: str | Path) -> dict[
         raise ValueError("Refusing synthetic training dataset")
     if set(manifest.get("source_types", [])) != {"controlled_experiment"}:
         raise ValueError("Only controlled real API experiments supported for production models")
-    frames = {name: _eligible(_load_split(source, name)) for name in (
-        "train", "validation", "calibration", "test"
-    )}
-    if any(len(frames[name]) < threshold for name, threshold in (
-        ("train", MIN_TRAIN), ("calibration", MIN_CALIBRATION), ("test", MIN_TEST)
-    )):
+    frames = {
+        name: _eligible(_load_split(source, name))
+        for name in ("train", "validation", "calibration", "test")
+    }
+    if any(
+        len(frames[name]) < threshold
+        for name, threshold in (
+            ("train", MIN_TRAIN),
+            ("calibration", MIN_CALIBRATION),
+            ("test", MIN_TEST),
+        )
+    ):
         raise ValueError(
             "Insufficient verified, uncensored real observations: "
             + ", ".join(f"{k}={len(v)}" for k, v in frames.items())
@@ -86,14 +90,16 @@ def train_from_dataset(dataset_dir: str | Path, output_dir: str | Path) -> dict[
     groups = [set(v["split_group_id"].dropna().astype(str)) for v in frames.values()]
     if any(groups[i] & groups[j] for i in range(4) for j in range(i + 1, 4)):
         raise ValueError("Leaked prompt groups across splits")
-    transform = ColumnTransformer([
-        ("numeric", "passthrough", ["prompt_word_count"]),
-        (
-            "categorical",
-            OneHotEncoder(handle_unknown="ignore"),
-            ["requested_model", "requested_effort"],
-        ),
-    ])
+    transform = ColumnTransformer(
+        [
+            ("numeric", "passthrough", ["prompt_word_count"]),
+            (
+                "categorical",
+                OneHotEncoder(handle_unknown="ignore"),
+                ["requested_model", "requested_effort"],
+            ),
+        ]
+    )
     model = Pipeline([("features", transform), ("regression", Ridge(alpha=10.0))])
     model.fit(
         _features(frames["train"]),
