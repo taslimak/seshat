@@ -379,11 +379,62 @@ def plan_next_batch(
         },
         "privacy": {"store_prompt_text": False, "store_response_text": False},
     }
-    expected_cost = sum(p.allocated_requests * unit_cost(p) for p in plans.values())
-    worst_cost = sum(
-        p.allocated_requests * overhead * p.worst_case_cost_usd for p in plans.values()
-    )
-    expected_usable = sum(p.expected_new_usable for p in plans.values())
+    # Verify against the plan the collector will actually build from this config, so
+    # the report shows realized counts (the design's balancing shifts a few cells).
+    from seshat.data.pricing import max_cost_estimate
+    from seshat.experiments.config import CollectionConfig
+    from seshat.experiments.design import build_plan
+    from seshat.providers.registry import adapter_class
+
+    family = adapter_class(provider).family
+
+    def realize(limit: int) -> tuple[Any, dict[str, dict[str, float]]]:
+        config["budget"]["max_requests"] = limit
+        built = build_plan(CollectionConfig.model_validate(config), pool, load_catalog())
+        rows: dict[str, dict[str, float]] = {
+            name: {"requests": 0, "expected_cost_usd": 0.0, "worst_case_usd": 0.0, "usable": 0.0}
+            for name in plans
+        }
+        for sample in built.samples:
+            plan = plans[sample.prompt_category]
+            request = sample.request
+            chars = sum(len(m.content) for m in request.messages) + len(request.system or "")
+            chars += sum(
+                len(json.dumps(t.input_schema)) + len(t.description or "") for t in request.tools
+            )
+            in_tokens = chars / 4 + 4 * len(request.messages)
+            cap = int(request.params.max_output_tokens or plan.cap)
+            row = rows[sample.prompt_category]
+            row["requests"] += 1
+            row["expected_cost_usd"] += in_tokens * in_rate + plan.expected_output_tokens * out_rate
+            row["worst_case_usd"] += float(
+                max_cost_estimate(family, entry, input_tokens=int(in_tokens), max_output_tokens=cap)
+            )
+            row["usable"] += 1 - plan.predicted_censor_rate
+        return built, rows
+
+    # The design's balancing shifts a few cells between categories; trim the request
+    # limit (the design trims in balanced round-robin order) until the realized
+    # expected spend is back within fill_fraction * budget.
+    limit = max_requests
+    realized_plan, realized = realize(limit)
+    for _ in range(20):
+        expected = sum(r["expected_cost_usd"] for r in realized.values())
+        if expected <= target_spend or limit <= len(plans):
+            break
+        limit = max(len(plans), min(limit - 1, int(limit * target_spend / expected)))
+        realized_plan, realized = realize(limit)
+    for name, plan in plans.items():
+        plan.allocated_requests = int(realized[name]["requests"])
+        plan.expected_new_usable = round(realized[name]["usable"], 1)
+    expected_cost = sum(r["expected_cost_usd"] for r in realized.values())
+    worst_cost = sum(r["worst_case_usd"] for r in realized.values())
+    expected_usable = sum(r["usable"] for r in realized.values())
+    if expected_cost > float(budget_usd):
+        raise ValueError(
+            f"Realized plan expects ${expected_cost:.2f}, above the ${budget_usd} budget"
+        )
+    max_requests = len(realized_plan.samples)
     report = {
         "experiment_id": experiment_id,
         "provider": provider,
@@ -404,10 +455,12 @@ def plan_next_batch(
         },
         "budget_usd": str(budget_usd),
         "planned_requests": max_requests,
-        "base_requests": base_requests,
+        "base_requests": int(realized_plan.report["base_cells"]),
+        "allocated_before_design_balancing": base_requests,
         "repetitions": {"fraction": repetition_fraction, "count": repetition_count},
         "expected_cost_usd": round(expected_cost, 4),
         "worst_case_cost_usd_uncapped": round(worst_cost, 4),
+        "worst_case_basis": "collector reservation (max_cost_estimate) for every realized request",
         "hard_cap_note": (
             "The collector reserves the worst case per request and stops before the "
             f"estimated spend could exceed ${budget_usd}; provider billing can differ."
