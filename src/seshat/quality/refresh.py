@@ -185,7 +185,11 @@ def retraining_due(
             last_rows = int(last["counts"]["rows"])
             last_version = last["predictor_version"]
     new_rows = real_observations - last_rows
-    drifted = bool(last_version and drift.get(last_version, {}).get("status") == "drift")
+    # Drift justifies a challenger only when there is new data to learn from; otherwise
+    # retraining would refit the same rows on every sync.
+    drifted = bool(
+        last_version and new_rows > 0 and drift.get(last_version, {}).get("status") == "drift"
+    )
     reasons = []
     if last_version is None and real_observations >= RETRAIN_MIN_NEW_REAL_OBSERVATIONS:
         reasons.append("no forecaster evaluated yet")
@@ -193,9 +197,14 @@ def retraining_due(
         reasons.append(f"{new_rows} new real observations since {last_version}")
     if drifted:
         reasons.append(f"drift detected for {last_version}")
+    if last_version and not drifted and drift.get(last_version, {}).get("status") == "drift":
+        reasons_blocked = f"drift detected for {last_version}, but no new data since evaluation"
+    else:
+        reasons_blocked = None
     return {
         "due": bool(reasons),
         "reasons": reasons,
+        "deferred": reasons_blocked,
         "real_observations": real_observations,
         "new_since_last_evaluation": new_rows,
         "min_new_observations": RETRAIN_MIN_NEW_REAL_OBSERVATIONS,

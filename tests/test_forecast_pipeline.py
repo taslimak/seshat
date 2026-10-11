@@ -72,7 +72,7 @@ def test_register_refresh_is_idempotent_and_origin_separated(
     assert first["outcomes"] == second["outcomes"]
     # Nothing new since the registered evaluation: no retraining on the data-volume rule.
     assert second["retraining"]["new_since_last_evaluation"] == 0
-    assert not any("new real observations" in r for r in second["retraining"]["reasons"])
+    assert second["retraining"]["due"] is False  # no new data: never refit the same rows
     outcomes = read_outcomes(data)
     assert set(outcomes["label_origin"]) == {"real"}  # relabelled test data only
     version = evaluation["predictor_version"]
