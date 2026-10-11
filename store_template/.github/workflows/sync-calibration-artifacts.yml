@@ -77,11 +77,25 @@ jobs:
           python scripts/sync_calibration_artifacts.py --store ../store \
             ${RUN_IDS:+--run-ids $RUN_IDS} | tee ../sync_summary.json
 
+      - name: Decide whether the quality loop needs to run
+        id: changed
+        shell: bash
+        run: |
+          # Scheduled syncs that imported nothing leave the store untouched (no churn).
+          imported=$(python -c "import json;d=json.load(open('sync_summary.json'));print(len(d.get('imported',[])))")
+          if [ "$imported" != "0" ] || [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Forecast-quality loop (outcomes, snapshots, drift, run reports)
+        if: steps.changed.outputs.run == 'true'
         working-directory: seshat
         run: python -m seshat.data.cli quality-refresh --root ../store | tee ../quality_summary.json
 
       - name: Train and register a challenger when justified (never activates it)
+        if: steps.changed.outputs.run == 'true'
         working-directory: seshat
         shell: bash
         run: |
