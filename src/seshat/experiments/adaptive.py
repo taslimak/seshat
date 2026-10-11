@@ -370,12 +370,14 @@ def plan_next_batch(
         "repetitions": {"fraction": repetition_fraction, "count": repetition_count},
         "budget": {"max_requests": max_requests, "max_cost_usd": str(budget_usd)},
         "execution": {
-            "concurrency": 1,
-            "per_provider_concurrency": 1,
+            # 263 requests at 5/min took ~53 min, beyond the workflow timeout; long
+            # (4096-token) outputs are latency-bound, so run a few in parallel.
+            "concurrency": 4,
+            "per_provider_concurrency": 4,
             "timeout_seconds": 180,
             "max_retries": 0,
             "preflight": "approximate",
-            "rate_limits": {provider: {"requests_per_minute": 5}},
+            "rate_limits": {provider: {"requests_per_minute": 30}},
         },
         "privacy": {"store_prompt_text": False, "store_response_text": False},
     }

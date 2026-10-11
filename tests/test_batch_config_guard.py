@@ -105,3 +105,16 @@ def test_whitespace_is_tolerated_and_missing_files_are_explained(tracked: None) 
             run_id="1",
             data_root="data",
         )
+
+
+def test_batches_that_cannot_finish_in_time_are_refused(tracked: None, cleanup: list[Path]) -> None:
+    slow = _write(
+        "_test_slow.yaml",
+        budget={"max_requests": 400, "max_cost_usd": "2.00"},
+        execution={"rate_limits": {"openai": {"requests_per_minute": 2}}},
+    )
+    cleanup.append(slow)
+    with pytest.raises(ValueError, match="over the 90 min"):
+        use_batch_config.prepare(
+            str(slow), provider="openai", model="gpt-6.1-sol", run_id="1", data_root="data"
+        )
