@@ -2,9 +2,9 @@
 
 The old two-call manual smoke test is retained for connectivity verification.
 The new `manual-calibration-batch.yml` is a separate explicitly approved
-collection campaign. Each invocation rotates generated prompt variants using
-the GitHub run ID, samples up to 40 requests, allows up to 512 output tokens
-per response, disables retries, and limits estimated spend to **$0.75/run**.
+collection campaign. Each invocation generates 600 candidate prompts and rotates variants using
+the GitHub run ID, samples up to 180 requests, allows up to 512 output tokens
+per response, disables retries, and limits estimated spend to **$2.00/run**.
 Actual provider bills can differ from estimates.
 
 ## Before triggering
@@ -17,15 +17,15 @@ Actual provider bills can differ from estimates.
    provider/model and explicitly approve the batch.
 4. Confirm dry-run expense estimates are reasonable. Download the
    `seshat-calibration-<run>` ZIP from Artifacts after completion. The run may
-   have fewer than 40 actual calls if its reserved spend cap is exhausted.
+   have fewer than 180 actual calls if its reserved spend cap is exhausted.
 5. Inspect the validation report and count **verified, non-truncated real**
    observations. Failed and censored calls are not full regression labels.
 
 ## Spend and persistence limitations
 
 This uses an ephemeral GitHub-hosted runner, so **each invocation is
-independent**: the $0.75 cap applies to one run only and is not an account-wide
-$10 monthly cap. Do not dispatch more than 10 batches without reconciling actual
+independent**: the $2.00 cap applies to one run only and is not an account-wide
+$10 monthly cap. Do not dispatch more than 5 batches without reconciling actual
 spend and other Seshat/provider usage against the original $10 monthly target.
 Avoid parallel unrelated API jobs; provider-side billing controls still matter.
 
