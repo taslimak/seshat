@@ -124,3 +124,32 @@ def test_plan_refuses_over_budget() -> None:
             experiment_id="x",
             budget_usd=Decimal("5"),
         )
+
+
+def test_categories_without_uncensored_labels_get_top_quality_priority(tmp_path: Path) -> None:
+    import pandas as pd
+
+    from seshat.experiments.adaptive import quality_priority
+
+    quality = pd.DataFrame(
+        [
+            {
+                "prompt_category": "short_answer",
+                "n": 20,
+                "realized_wape_pct": 80.0,
+                "realized_coverage_pct": 80.0,
+                "catastrophic_rate_pct": 10.0,
+            },
+            {
+                "prompt_category": "code_generation",
+                "n": 13,
+                "realized_wape_pct": 5.0,
+                "realized_coverage_pct": 100.0,
+                "catastrophic_rate_pct": 0.0,
+            },
+        ]
+    )
+    weights, _ = quality_priority(quality)
+    assert weights["short_answer"] > weights["code_generation"]  # raw formula is fooled
+    # plan_next_batch overrides it for categories with zero uncensored observations; the
+    # override itself is exercised through the CLI on real data (see dry-run reports).

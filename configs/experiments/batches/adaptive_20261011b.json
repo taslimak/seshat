@@ -1,0 +1,642 @@
+{
+  "experiment_id": "adaptive_20261011b",
+  "provider": "openai",
+  "model": "gpt-6.1-sol",
+  "pricing": {
+    "version": "2026-10-10",
+    "input_usd_per_million": "2.00",
+    "output_usd_per_million": "10.00"
+  },
+  "efforts": [
+    "low",
+    "medium",
+    "high"
+  ],
+  "allocation": {
+    "objective": "sum log(1 + usable) per cost**cost_exponent",
+    "cost_exponent": 0.5,
+    "min_requests_per_category": 6,
+    "max_share_per_category": 0.12,
+    "fill_fraction": 0.85,
+    "max_censor_rate": 0.1
+  },
+  "budget_usd": "2.00",
+  "planned_requests": 200,
+  "base_requests": 182,
+  "allocated_before_design_balancing": 188,
+  "repetitions": {
+    "fraction": 0.1,
+    "count": 2
+  },
+  "expected_cost_usd": 1.6746,
+  "worst_case_cost_usd_uncapped": 3.8818,
+  "worst_case_basis": "collector reservation (max_cost_estimate) for every realized request",
+  "hard_cap_note": "The collector reserves the worst case per request and stops before the estimated spend could exceed $2.00; provider billing can differ.",
+  "expected_new_usable_rows": 190.0,
+  "expected_cost_per_usable_usd": 0.00882,
+  "categories": {
+    "classification": {
+      "category": "classification",
+      "model": {
+        "category": "classification",
+        "mu": 3.959437912434103,
+        "sigma": 0.9999999999999999,
+        "n_uncensored": 13,
+        "n_censored": 0,
+        "source": "map_censored_lognormal",
+        "median": 52.4
+      },
+      "observed_rows": 13,
+      "observed_usable": 13,
+      "observed_censor_rate": 0.0,
+      "cap": 512,
+      "predicted_censor_rate": 0.016,
+      "cap_at_top_of_ladder": false,
+      "mean_input_tokens": 330.6,
+      "expected_output_tokens": 89.2,
+      "expected_cost_usd": 0.0015535324027901544,
+      "worst_case_cost_usd": 0.005781191666666667,
+      "allocated_requests": 22,
+      "expected_new_usable": 21.6,
+      "reasons": [
+        "forecast-quality priority x1.93"
+      ]
+    },
+    "code_generation": {
+      "category": "code_generation",
+      "model": {
+        "category": "code_generation",
+        "mu": 7.7894379124341055,
+        "sigma": 0.6499999999999999,
+        "n_uncensored": 0,
+        "n_censored": 13,
+        "source": "map_censored_lognormal",
+        "median": 2415.0
+      },
+      "observed_rows": 13,
+      "observed_usable": 0,
+      "observed_censor_rate": 1.0,
+      "cap": 4096,
+      "predicted_censor_rate": 0.246,
+      "cap_at_top_of_ladder": true,
+      "mean_input_tokens": 752.2,
+      "expected_output_tokens": 2592.3,
+      "expected_cost_usd": 0.02742781190253441,
+      "worst_case_cost_usd": 0.042464383333333335,
+      "allocated_requests": 12,
+      "expected_new_usable": 9.0,
+      "reasons": [
+        "observed censor rate 100% (truncated at cap 512) -> cap 4096",
+        "no usable labels yet",
+        "forecast-quality priority x2.26"
+      ]
+    },
+    "code_review": {
+      "category": "code_review",
+      "model": {
+        "category": "code_review",
+        "mu": 7.599437912434106,
+        "sigma": 0.6249999999999999,
+        "n_uncensored": 0,
+        "n_censored": 13,
+        "source": "map_censored_lognormal",
+        "median": 1997.1
+      },
+      "observed_rows": 13,
+      "observed_usable": 0,
+      "observed_censor_rate": 1.0,
+      "cap": 4096,
+      "predicted_censor_rate": 0.162,
+      "cap_at_top_of_ladder": true,
+      "mean_input_tokens": 608.2,
+      "expected_output_tokens": 2287.0,
+      "expected_cost_usd": 0.0240865173480451,
+      "worst_case_cost_usd": 0.04217635,
+      "allocated_requests": 14,
+      "expected_new_usable": 11.7,
+      "reasons": [
+        "observed censor rate 100% (truncated at cap 512) -> cap 4096",
+        "no usable labels yet",
+        "forecast-quality priority x2.26"
+      ]
+    },
+    "creative_writing": {
+      "category": "creative_writing",
+      "model": {
+        "category": "creative_writing",
+        "mu": 6.5894379124341045,
+        "sigma": 0.9999999999999999,
+        "n_uncensored": 4,
+        "n_censored": 9,
+        "source": "map_censored_lognormal",
+        "median": 727.4
+      },
+      "observed_rows": 13,
+      "observed_usable": 4,
+      "observed_censor_rate": 0.6923076923076923,
+      "cap": 4096,
+      "predicted_censor_rate": 0.052,
+      "cap_at_top_of_ladder": false,
+      "mean_input_tokens": 682.5,
+      "expected_output_tokens": 1149.7,
+      "expected_cost_usd": 0.012862175048255663,
+      "worst_case_cost_usd": 0.042324908333333335,
+      "allocated_requests": 7,
+      "expected_new_usable": 6.6,
+      "reasons": [
+        "observed censor rate 69% (truncated at cap 512) -> cap 4096",
+        "forecast-quality priority x1.36"
+      ]
+    },
+    "debugging": {
+      "category": "debugging",
+      "model": {
+        "category": "debugging",
+        "mu": 5.649437912434104,
+        "sigma": 0.35,
+        "n_uncensored": 13,
+        "n_censored": 0,
+        "source": "map_censored_lognormal",
+        "median": 284.1
+      },
+      "observed_rows": 13,
+      "observed_usable": 13,
+      "observed_censor_rate": 0.0,
+      "cap": 1024,
+      "predicted_censor_rate": 0.002,
+      "cap_at_top_of_ladder": false,
+      "mean_input_tokens": 485.9,
+      "expected_output_tokens": 327.0,
+      "expected_cost_usd": 0.0042416201577872605,
+      "worst_case_cost_usd": 0.011211775,
+      "allocated_requests": 7,
+      "expected_new_usable": 7.0,
+      "reasons": [
+        "forecast-quality priority x1.22"
+      ]
+    },
+    "extraction": {
+      "category": "extraction",
+      "model": {
+        "category": "extraction",
+        "mu": 4.669437912434103,
+        "sigma": 0.44999999999999996,
+        "n_uncensored": 16,
+        "n_censored": 0,
+        "source": "map_censored_lognormal",
+        "median": 106.6
+      },
+      "observed_rows": 16,
+      "observed_usable": 16,
+      "observed_censor_rate": 0.0,
+      "cap": 512,
+      "predicted_censor_rate": 0.002,
+      "cap_at_top_of_ladder": false,
+      "mean_input_tokens": 793.7,
+      "expected_output_tokens": 127.7,
+      "expected_cost_usd": 0.0028642844679643547,
+      "worst_case_cost_usd": 0.006707358333333333,
+      "allocated_requests": 10,
+      "expected_new_usable": 10.0,
+      "reasons": [
+        "forecast-quality priority x1.38"
+      ]
+    },
+    "long_context_analysis": {
+      "category": "long_context_analysis",
+      "model": {
+        "category": "long_context_analysis",
+        "mu": 5.729437912434104,
+        "sigma": 0.6249999999999999,
+        "n_uncensored": 8,
+        "n_censored": 1,
+        "source": "map_censored_lognormal",
+        "median": 307.8
+      },
+      "observed_rows": 9,
+      "observed_usable": 8,
+      "observed_censor_rate": 0.1111111111111111,
+      "cap": 2048,
+      "predicted_censor_rate": 0.003,
+      "cap_at_top_of_ladder": false,
+      "mean_input_tokens": 3546.8,
+      "expected_output_tokens": 403.7,
+      "expected_cost_usd": 0.011130088350582424,
+      "worst_case_cost_usd": 0.027573508333333337,
+      "allocated_requests": 7,
+      "expected_new_usable": 7.0,
+      "reasons": [
+        "observed censor rate 11% (truncated at cap 512) -> cap 2048",
+        "forecast-quality priority x1.58"
+      ]
+    },
+    "mathematics": {
+      "category": "mathematics",
+      "model": {
+        "category": "mathematics",
+        "mu": 6.499437912434105,
+        "sigma": 0.7249999999999999,
+        "n_uncensored": 7,
+        "n_censored": 8,
+        "source": "map_censored_lognormal",
+        "median": 664.8
+      },
+      "observed_rows": 15,
+      "observed_usable": 7,
+      "observed_censor_rate": 0.5333333333333333,
+      "cap": 4096,
+      "predicted_censor_rate": 0.011,
+      "cap_at_top_of_ladder": false,
+      "mean_input_tokens": 334.3,
+      "expected_output_tokens": 920.8,
+      "expected_cost_usd": 0.009876469675169213,
+      "worst_case_cost_usd": 0.04162866666666667,
+      "allocated_requests": 8,
+      "expected_new_usable": 7.9,
+      "reasons": [
+        "observed censor rate 53% (truncated at cap 512) -> cap 4096",
+        "forecast-quality priority x1.16"
+      ]
+    },
+    "multi_turn": {
+      "category": "multi_turn",
+      "model": {
+        "category": "multi_turn",
+        "mu": 5.149437912434103,
+        "sigma": 0.6249999999999999,
+        "n_uncensored": 11,
+        "n_censored": 1,
+        "source": "map_censored_lognormal",
+        "median": 172.3
+      },
+      "observed_rows": 12,
+      "observed_usable": 11,
+      "observed_censor_rate": 0.08333333333333333,
+      "cap": 1024,
+      "predicted_censor_rate": 0.005,
+      "cap_at_top_of_ladder": false,
+      "mean_input_tokens": 443.6,
+      "expected_output_tokens": 225.5,
+      "expected_cost_usd": 0.0031419641779802474,
+      "worst_case_cost_usd": 0.011127183333333334,
+      "allocated_requests": 12,
+      "expected_new_usable": 11.9,
+      "reasons": [
+        "forecast-quality priority x1.62"
+      ]
+    },
+    "question_answering": {
+      "category": "question_answering",
+      "model": {
+        "category": "question_answering",
+        "mu": 5.439437912434104,
+        "sigma": 0.6749999999999999,
+        "n_uncensored": 13,
+        "n_censored": 2,
+        "source": "map_censored_lognormal",
+        "median": 230.3
+      },
+      "observed_rows": 15,
+      "observed_usable": 13,
+      "observed_censor_rate": 0.13333333333333333,
+      "cap": 1024,
+      "predicted_censor_rate": 0.024,
+      "cap_at_top_of_ladder": false,
+      "mean_input_tokens": 945.1,
+      "expected_output_tokens": 304.6,
+      "expected_cost_usd": 0.004936322959140443,
+      "worst_case_cost_usd": 0.012130158333333333,
+      "allocated_requests": 7,
+      "expected_new_usable": 6.8,
+      "reasons": [
+        "observed censor rate 13% (truncated at cap 512) -> cap 1024",
+        "forecast-quality priority x1.25"
+      ]
+    },
+    "reasoning": {
+      "category": "reasoning",
+      "model": {
+        "category": "reasoning",
+        "mu": 6.209437912434105,
+        "sigma": 0.15,
+        "n_uncensored": 9,
+        "n_censored": 3,
+        "source": "map_censored_lognormal",
+        "median": 497.4
+      },
+      "observed_rows": 12,
+      "observed_usable": 9,
+      "observed_censor_rate": 0.25,
+      "cap": 1024,
+      "predicted_censor_rate": 0.006,
+      "cap_at_top_of_ladder": false,
+      "mean_input_tokens": 695.0,
+      "expected_output_tokens": 544.6,
+      "expected_cost_usd": 0.006836281638430095,
+      "worst_case_cost_usd": 0.011629966666666668,
+      "allocated_requests": 7,
+      "expected_new_usable": 7.0,
+      "reasons": [
+        "observed censor rate 25% (truncated at cap 512) -> cap 1024",
+        "forecast-quality priority x1.08"
+      ]
+    },
+    "short_answer": {
+      "category": "short_answer",
+      "model": {
+        "category": "short_answer",
+        "mu": 2.9694379124341017,
+        "sigma": 1.0249999999999997,
+        "n_uncensored": 13,
+        "n_censored": 0,
+        "source": "map_censored_lognormal",
+        "median": 19.5
+      },
+      "observed_rows": 13,
+      "observed_usable": 13,
+      "observed_censor_rate": 0.0,
+      "cap": 512,
+      "predicted_censor_rate": 0.001,
+      "cap_at_top_of_ladder": false,
+      "mean_input_tokens": 69.4,
+      "expected_output_tokens": 35.4,
+      "expected_cost_usd": 0.0004931005857137257,
+      "worst_case_cost_usd": 0.0052587250000000006,
+      "allocated_requests": 24,
+      "expected_new_usable": 24.0,
+      "reasons": [
+        "forecast-quality priority x1.87"
+      ]
+    },
+    "structured_json": {
+      "category": "structured_json",
+      "model": {
+        "category": "structured_json",
+        "mu": 4.579437912434103,
+        "sigma": 0.35,
+        "n_uncensored": 16,
+        "n_censored": 0,
+        "source": "map_censored_lognormal",
+        "median": 97.5
+      },
+      "observed_rows": 16,
+      "observed_usable": 16,
+      "observed_censor_rate": 0.0,
+      "cap": 512,
+      "predicted_censor_rate": 0.0,
+      "cap_at_top_of_ladder": false,
+      "mean_input_tokens": 817.3,
+      "expected_output_tokens": 112.2,
+      "expected_cost_usd": 0.002757016416572503,
+      "worst_case_cost_usd": 0.006754541666666667,
+      "allocated_requests": 6,
+      "expected_new_usable": 6.0,
+      "reasons": [
+        "forecast-quality priority x1.27"
+      ]
+    },
+    "summarization": {
+      "category": "summarization",
+      "model": {
+        "category": "summarization",
+        "mu": 4.7594379124341035,
+        "sigma": 0.3999999999999999,
+        "n_uncensored": 13,
+        "n_censored": 0,
+        "source": "map_censored_lognormal",
+        "median": 116.7
+      },
+      "observed_rows": 13,
+      "observed_usable": 13,
+      "observed_censor_rate": 0.0,
+      "cap": 512,
+      "predicted_censor_rate": 0.001,
+      "cap_at_top_of_ladder": false,
+      "mean_input_tokens": 991.4,
+      "expected_output_tokens": 136.8,
+      "expected_cost_usd": 0.0033512410547411977,
+      "worst_case_cost_usd": 0.0071028083333333335,
+      "allocated_requests": 10,
+      "expected_new_usable": 10.0,
+      "reasons": [
+        "forecast-quality priority x1.37"
+      ]
+    },
+    "tool_calling": {
+      "category": "tool_calling",
+      "model": {
+        "category": "tool_calling",
+        "mu": 4.1394379124341025,
+        "sigma": 0.4999999999999999,
+        "n_uncensored": 9,
+        "n_censored": 0,
+        "source": "map_censored_lognormal",
+        "median": 62.8
+      },
+      "observed_rows": 9,
+      "observed_usable": 9,
+      "observed_censor_rate": 0.0,
+      "cap": 512,
+      "predicted_censor_rate": 0.0,
+      "cap_at_top_of_ladder": false,
+      "mean_input_tokens": 505.0,
+      "expected_output_tokens": 77.0,
+      "expected_cost_usd": 0.001780486869000342,
+      "worst_case_cost_usd": 0.006130058333333334,
+      "allocated_requests": 23,
+      "expected_new_usable": 23.0,
+      "reasons": [
+        "forecast-quality priority x1.50"
+      ]
+    },
+    "translation": {
+      "category": "translation",
+      "model": {
+        "category": "translation",
+        "mu": 6.209437912434105,
+        "sigma": 0.9249999999999998,
+        "n_uncensored": 9,
+        "n_censored": 6,
+        "source": "map_censored_lognormal",
+        "median": 497.4
+      },
+      "observed_rows": 15,
+      "observed_usable": 9,
+      "observed_censor_rate": 0.4,
+      "cap": 4096,
+      "predicted_censor_rate": 0.016,
+      "cap_at_top_of_ladder": false,
+      "mean_input_tokens": 872.3,
+      "expected_output_tokens": 793.3,
+      "expected_cost_usd": 0.009677586717089463,
+      "worst_case_cost_usd": 0.042704591666666666,
+      "allocated_requests": 12,
+      "expected_new_usable": 11.8,
+      "reasons": [
+        "observed censor rate 40% (truncated at cap 512/2048) -> cap 4096",
+        "forecast-quality priority x2.26"
+      ]
+    },
+    "verbose_explanation": {
+      "category": "verbose_explanation",
+      "model": {
+        "category": "verbose_explanation",
+        "mu": 7.869437912434106,
+        "sigma": 0.6749999999999999,
+        "n_uncensored": 0,
+        "n_censored": 12,
+        "source": "map_censored_lognormal",
+        "median": 2616.1
+      },
+      "observed_rows": 12,
+      "observed_usable": 0,
+      "observed_censor_rate": 1.0,
+      "cap": 4096,
+      "predicted_censor_rate": 0.289,
+      "cap_at_top_of_ladder": true,
+      "mean_input_tokens": 988.1,
+      "expected_output_tokens": 2712.1,
+      "expected_cost_usd": 0.02909718089628721,
+      "worst_case_cost_usd": 0.042936275,
+      "allocated_requests": 12,
+      "expected_new_usable": 8.5,
+      "reasons": [
+        "observed censor rate 100% (truncated at cap 512) -> cap 4096",
+        "no usable labels yet",
+        "forecast-quality priority x2.26"
+      ]
+    }
+  },
+  "store_observations_used": 222,
+  "forecast_quality_priority": {
+    "weights": {
+      "classification": 1.932,
+      "code_generation": 2.259,
+      "code_review": 2.259,
+      "creative_writing": 1.358,
+      "debugging": 1.221,
+      "extraction": 1.378,
+      "long_context_analysis": 1.582,
+      "mathematics": 1.159,
+      "multi_turn": 1.617,
+      "question_answering": 1.249,
+      "reasoning": 1.082,
+      "short_answer": 1.869,
+      "structured_json": 1.266,
+      "summarization": 1.371,
+      "tool_calling": 1.504,
+      "translation": 2.259,
+      "verbose_explanation": 2.259
+    },
+    "inputs": {
+      "classification": {
+        "n": 13,
+        "realized_wape_pct": 65.74642126789367,
+        "realized_coverage_pct": 84.61538461538461,
+        "catastrophic_rate_pct": 16.666666666666668
+      },
+      "code_generation": {
+        "n": 13,
+        "realized_wape_pct": 8.577473958333334,
+        "realized_coverage_pct": 92.3076923076923,
+        "catastrophic_rate_pct": 0.0,
+        "override": "no uncensored labels: realized error is uninformative"
+      },
+      "code_review": {
+        "n": 13,
+        "realized_wape_pct": 0.0,
+        "realized_coverage_pct": 100.0,
+        "catastrophic_rate_pct": 0.0,
+        "override": "no uncensored labels: realized error is uninformative"
+      },
+      "creative_writing": {
+        "n": 13,
+        "realized_wape_pct": 20.440366972477065,
+        "realized_coverage_pct": 100.0,
+        "catastrophic_rate_pct": 15.384615384615385
+      },
+      "debugging": {
+        "n": 13,
+        "realized_wape_pct": 22.103618849258005,
+        "realized_coverage_pct": 100.0,
+        "catastrophic_rate_pct": 0.0
+      },
+      "extraction": {
+        "n": 16,
+        "realized_wape_pct": 31.550218340611355,
+        "realized_coverage_pct": 100.0,
+        "catastrophic_rate_pct": 6.25
+      },
+      "long_context_analysis": {
+        "n": 9,
+        "realized_wape_pct": 35.93908629441624,
+        "realized_coverage_pct": 100.0,
+        "catastrophic_rate_pct": 22.22222222222222
+      },
+      "mathematics": {
+        "n": 15,
+        "realized_wape_pct": 9.254161751212479,
+        "realized_coverage_pct": 93.33333333333333,
+        "catastrophic_rate_pct": 6.666666666666667
+      },
+      "multi_turn": {
+        "n": 12,
+        "realized_wape_pct": 45.02999143101971,
+        "realized_coverage_pct": 91.66666666666666,
+        "catastrophic_rate_pct": 16.666666666666668
+      },
+      "question_answering": {
+        "n": 15,
+        "realized_wape_pct": 24.94797086368366,
+        "realized_coverage_pct": 100.0,
+        "catastrophic_rate_pct": 0.0
+      },
+      "reasoning": {
+        "n": 12,
+        "realized_wape_pct": 8.218707015130674,
+        "realized_coverage_pct": 100.0,
+        "catastrophic_rate_pct": 0.0
+      },
+      "short_answer": {
+        "n": 13,
+        "realized_wape_pct": 76.17801047120419,
+        "realized_coverage_pct": 84.61538461538461,
+        "catastrophic_rate_pct": 0.0
+      },
+      "structured_json": {
+        "n": 16,
+        "realized_wape_pct": 20.394331484904498,
+        "realized_coverage_pct": 100.0,
+        "catastrophic_rate_pct": 6.25
+      },
+      "summarization": {
+        "n": 13,
+        "realized_wape_pct": 37.07796193984039,
+        "realized_coverage_pct": 92.3076923076923,
+        "catastrophic_rate_pct": 0.0
+      },
+      "tool_calling": {
+        "n": 9,
+        "realized_wape_pct": 39.3312101910828,
+        "realized_coverage_pct": 100.0,
+        "catastrophic_rate_pct": 11.11111111111111
+      },
+      "translation": {
+        "n": 15,
+        "realized_wape_pct": 65.9191029235082,
+        "realized_coverage_pct": 73.33333333333333,
+        "catastrophic_rate_pct": 26.666666666666668
+      },
+      "verbose_explanation": {
+        "n": 12,
+        "realized_wape_pct": 0.0,
+        "realized_coverage_pct": 100.0,
+        "catastrophic_rate_pct": 0.0,
+        "override": "no uncensored labels: realized error is uninformative"
+      }
+    },
+    "formula": "1 + min(realized WAPE, 200%)/100 + max(0, 90 - coverage)/50 + catastrophic(>100%) rate/100; multiplies the information gain per dollar"
+  },
+  "approval_required": "Paid API calls. Requires explicit approval and a manual workflow dispatch with approve_paid_call=true. No request has been sent.",
+  "generated_at": "2026-10-11T19:51:01.250694+00:00"
+}
