@@ -1,4 +1,5 @@
 """Fail-safe training readiness reporting (no paid API requests)."""
+
 from scripts.report_training_readiness import readiness
 
 
