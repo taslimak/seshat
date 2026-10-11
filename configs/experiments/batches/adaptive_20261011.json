@@ -1,0 +1,488 @@
+{
+  "experiment_id": "adaptive_20261011",
+  "provider": "openai",
+  "model": "gpt-6.1-sol",
+  "pricing": {
+    "version": "2026-10-10",
+    "input_usd_per_million": "2.00",
+    "output_usd_per_million": "10.00"
+  },
+  "efforts": [
+    "low",
+    "medium",
+    "high"
+  ],
+  "allocation": {
+    "objective": "sum log(1 + usable) per cost**cost_exponent",
+    "cost_exponent": 0.5,
+    "min_requests_per_category": 6,
+    "max_share_per_category": 0.12,
+    "fill_fraction": 0.85,
+    "max_censor_rate": 0.1
+  },
+  "budget_usd": "2.00",
+  "planned_requests": 263,
+  "base_requests": 239,
+  "allocated_before_design_balancing": 269,
+  "repetitions": {
+    "fraction": 0.1,
+    "count": 2
+  },
+  "expected_cost_usd": 1.6945,
+  "worst_case_cost_usd_uncapped": 3.9624,
+  "worst_case_basis": "collector reservation (max_cost_estimate) for every realized request",
+  "hard_cap_note": "The collector reserves the worst case per request and stops before the estimated spend could exceed $2.00; provider billing can differ.",
+  "expected_new_usable_rows": 253.8,
+  "expected_cost_per_usable_usd": 0.00668,
+  "categories": {
+    "classification": {
+      "category": "classification",
+      "model": {
+        "category": "classification",
+        "mu": 3.8894379124341025,
+        "sigma": 1.0499999999999998,
+        "n_uncensored": 8,
+        "n_censored": 0,
+        "source": "map_censored_lognormal",
+        "median": 48.9
+      },
+      "observed_rows": 8,
+      "observed_usable": 8,
+      "observed_censor_rate": 0.0,
+      "cap": 512,
+      "predicted_censor_rate": 0.017,
+      "cap_at_top_of_ladder": false,
+      "mean_input_tokens": 333.8,
+      "expected_output_tokens": 86.7,
+      "expected_cost_usd": 0.001534908518145142,
+      "worst_case_cost_usd": 0.005787541666666667,
+      "allocated_requests": 35,
+      "expected_new_usable": 34.4,
+      "reasons": []
+    },
+    "code_generation": {
+      "category": "code_generation",
+      "model": {
+        "category": "code_generation",
+        "mu": 7.7894379124341055,
+        "sigma": 0.6499999999999999,
+        "n_uncensored": 0,
+        "n_censored": 13,
+        "source": "map_censored_lognormal",
+        "median": 2415.0
+      },
+      "observed_rows": 13,
+      "observed_usable": 0,
+      "observed_censor_rate": 1.0,
+      "cap": 4096,
+      "predicted_censor_rate": 0.246,
+      "cap_at_top_of_ladder": true,
+      "mean_input_tokens": 713.4,
+      "expected_output_tokens": 2592.3,
+      "expected_cost_usd": 0.027350236902534412,
+      "worst_case_cost_usd": 0.04238680833333334,
+      "allocated_requests": 12,
+      "expected_new_usable": 9.0,
+      "reasons": [
+        "observed censor rate 100% at cap 512 -> cap 4096",
+        "no usable labels yet"
+      ]
+    },
+    "code_review": {
+      "category": "code_review",
+      "model": {
+        "category": "code_review",
+        "mu": 7.599437912434106,
+        "sigma": 0.6249999999999999,
+        "n_uncensored": 0,
+        "n_censored": 13,
+        "source": "map_censored_lognormal",
+        "median": 1997.1
+      },
+      "observed_rows": 13,
+      "observed_usable": 0,
+      "observed_censor_rate": 1.0,
+      "cap": 4096,
+      "predicted_censor_rate": 0.162,
+      "cap_at_top_of_ladder": true,
+      "mean_input_tokens": 633.9,
+      "expected_output_tokens": 2287.0,
+      "expected_cost_usd": 0.0241379173480451,
+      "worst_case_cost_usd": 0.04222775,
+      "allocated_requests": 10,
+      "expected_new_usable": 8.4,
+      "reasons": [
+        "observed censor rate 100% at cap 512 -> cap 4096",
+        "no usable labels yet"
+      ]
+    },
+    "creative_writing": {
+      "category": "creative_writing",
+      "model": {
+        "category": "creative_writing",
+        "mu": 6.5894379124341045,
+        "sigma": 0.9999999999999999,
+        "n_uncensored": 4,
+        "n_censored": 9,
+        "source": "map_censored_lognormal",
+        "median": 727.4
+      },
+      "observed_rows": 13,
+      "observed_usable": 4,
+      "observed_censor_rate": 0.6923076923076923,
+      "cap": 4096,
+      "predicted_censor_rate": 0.052,
+      "cap_at_top_of_ladder": false,
+      "mean_input_tokens": 630.0,
+      "expected_output_tokens": 1149.7,
+      "expected_cost_usd": 0.012757233381588996,
+      "worst_case_cost_usd": 0.04221996666666667,
+      "allocated_requests": 9,
+      "expected_new_usable": 8.5,
+      "reasons": [
+        "observed censor rate 69% at cap 512 -> cap 4096"
+      ]
+    },
+    "debugging": {
+      "category": "debugging",
+      "model": {
+        "category": "debugging",
+        "mu": 5.6694379124341046,
+        "sigma": 0.35,
+        "n_uncensored": 9,
+        "n_censored": 0,
+        "source": "map_censored_lognormal",
+        "median": 289.9
+      },
+      "observed_rows": 9,
+      "observed_usable": 9,
+      "observed_censor_rate": 0.0,
+      "cap": 1024,
+      "predicted_censor_rate": 0.002,
+      "cap_at_top_of_ladder": false,
+      "mean_input_tokens": 488.6,
+      "expected_output_tokens": 333.5,
+      "expected_cost_usd": 0.0043125653374063554,
+      "worst_case_cost_usd": 0.011217133333333334,
+      "allocated_requests": 11,
+      "expected_new_usable": 11.0,
+      "reasons": []
+    },
+    "extraction": {
+      "category": "extraction",
+      "model": {
+        "category": "extraction",
+        "mu": 4.549437912434103,
+        "sigma": 0.3999999999999999,
+        "n_uncensored": 13,
+        "n_censored": 0,
+        "source": "map_censored_lognormal",
+        "median": 94.6
+      },
+      "observed_rows": 13,
+      "observed_usable": 13,
+      "observed_censor_rate": 0.0,
+      "cap": 512,
+      "predicted_censor_rate": 0.0,
+      "cap_at_top_of_ladder": false,
+      "mean_input_tokens": 798.3,
+      "expected_output_tokens": 111.0,
+      "expected_cost_usd": 0.0027064733462727345,
+      "worst_case_cost_usd": 0.006716666666666667,
+      "allocated_requests": 16,
+      "expected_new_usable": 16.0,
+      "reasons": []
+    },
+    "long_context_analysis": {
+      "category": "long_context_analysis",
+      "model": {
+        "category": "long_context_analysis",
+        "mu": 5.729437912434104,
+        "sigma": 0.6249999999999999,
+        "n_uncensored": 8,
+        "n_censored": 1,
+        "source": "map_censored_lognormal",
+        "median": 307.8
+      },
+      "observed_rows": 9,
+      "observed_usable": 8,
+      "observed_censor_rate": 0.1111111111111111,
+      "cap": 2048,
+      "predicted_censor_rate": 0.003,
+      "cap_at_top_of_ladder": false,
+      "mean_input_tokens": 3526.7,
+      "expected_output_tokens": 403.7,
+      "expected_cost_usd": 0.011089905017249088,
+      "worst_case_cost_usd": 0.027533325,
+      "allocated_requests": 7,
+      "expected_new_usable": 7.0,
+      "reasons": [
+        "observed censor rate 11% at cap 512 -> cap 2048"
+      ]
+    },
+    "mathematics": {
+      "category": "mathematics",
+      "model": {
+        "category": "mathematics",
+        "mu": 6.519437912434105,
+        "sigma": 0.6749999999999999,
+        "n_uncensored": 4,
+        "n_censored": 8,
+        "source": "map_censored_lognormal",
+        "median": 678.2
+      },
+      "observed_rows": 12,
+      "observed_usable": 4,
+      "observed_censor_rate": 0.6666666666666666,
+      "cap": 4096,
+      "predicted_censor_rate": 0.008,
+      "cap_at_top_of_ladder": false,
+      "mean_input_tokens": 315.6,
+      "expected_output_tokens": 912.6,
+      "expected_cost_usd": 0.009756815384838493,
+      "worst_case_cost_usd": 0.0415912,
+      "allocated_requests": 11,
+      "expected_new_usable": 10.9,
+      "reasons": [
+        "observed censor rate 67% at cap 512 -> cap 4096"
+      ]
+    },
+    "multi_turn": {
+      "category": "multi_turn",
+      "model": {
+        "category": "multi_turn",
+        "mu": 4.849437912434103,
+        "sigma": 0.475,
+        "n_uncensored": 8,
+        "n_censored": 0,
+        "source": "map_censored_lognormal",
+        "median": 127.7
+      },
+      "observed_rows": 8,
+      "observed_usable": 8,
+      "observed_censor_rate": 0.0,
+      "cap": 512,
+      "predicted_censor_rate": 0.007,
+      "cap_at_top_of_ladder": false,
+      "mean_input_tokens": 437.6,
+      "expected_output_tokens": 154.1,
+      "expected_cost_usd": 0.0024161338110993006,
+      "worst_case_cost_usd": 0.005995141666666667,
+      "allocated_requests": 14,
+      "expected_new_usable": 13.9,
+      "reasons": []
+    },
+    "question_answering": {
+      "category": "question_answering",
+      "model": {
+        "category": "question_answering",
+        "mu": 5.459437912434104,
+        "sigma": 0.6749999999999999,
+        "n_uncensored": 11,
+        "n_censored": 2,
+        "source": "map_censored_lognormal",
+        "median": 235.0
+      },
+      "observed_rows": 13,
+      "observed_usable": 11,
+      "observed_censor_rate": 0.15384615384615385,
+      "cap": 1024,
+      "predicted_censor_rate": 0.025,
+      "cap_at_top_of_ladder": false,
+      "mean_input_tokens": 988.7,
+      "expected_output_tokens": 310.3,
+      "expected_cost_usd": 0.005080045661826928,
+      "worst_case_cost_usd": 0.012217433333333335,
+      "allocated_requests": 10,
+      "expected_new_usable": 9.7,
+      "reasons": [
+        "observed censor rate 15% at cap 512 -> cap 1024"
+      ]
+    },
+    "reasoning": {
+      "category": "reasoning",
+      "model": {
+        "category": "reasoning",
+        "mu": 6.209437912434105,
+        "sigma": 0.15,
+        "n_uncensored": 9,
+        "n_censored": 3,
+        "source": "map_censored_lognormal",
+        "median": 497.4
+      },
+      "observed_rows": 12,
+      "observed_usable": 9,
+      "observed_censor_rate": 0.25,
+      "cap": 1024,
+      "predicted_censor_rate": 0.006,
+      "cap_at_top_of_ladder": false,
+      "mean_input_tokens": 718.6,
+      "expected_output_tokens": 544.6,
+      "expected_cost_usd": 0.006883473305096761,
+      "worst_case_cost_usd": 0.011677158333333333,
+      "allocated_requests": 11,
+      "expected_new_usable": 10.9,
+      "reasons": [
+        "observed censor rate 25% at cap 512 -> cap 1024"
+      ]
+    },
+    "short_answer": {
+      "category": "short_answer",
+      "model": {
+        "category": "short_answer",
+        "mu": 3.249437912434102,
+        "sigma": 0.9249999999999998,
+        "n_uncensored": 8,
+        "n_censored": 0,
+        "source": "map_censored_lognormal",
+        "median": 25.8
+      },
+      "observed_rows": 8,
+      "observed_usable": 8,
+      "observed_censor_rate": 0.0,
+      "cap": 512,
+      "predicted_censor_rate": 0.001,
+      "cap_at_top_of_ladder": false,
+      "mean_input_tokens": 82.3,
+      "expected_output_tokens": 42.6,
+      "expected_cost_usd": 0.0005908367308067396,
+      "worst_case_cost_usd": 0.0052846,
+      "allocated_requests": 34,
+      "expected_new_usable": 34.0,
+      "reasons": []
+    },
+    "structured_json": {
+      "category": "structured_json",
+      "model": {
+        "category": "structured_json",
+        "mu": 4.609437912434103,
+        "sigma": 0.3999999999999999,
+        "n_uncensored": 12,
+        "n_censored": 0,
+        "source": "map_censored_lognormal",
+        "median": 100.4
+      },
+      "observed_rows": 12,
+      "observed_usable": 12,
+      "observed_censor_rate": 0.0,
+      "cap": 512,
+      "predicted_censor_rate": 0.0,
+      "cap_at_top_of_ladder": false,
+      "mean_input_tokens": 879.6,
+      "expected_output_tokens": 117.8,
+      "expected_cost_usd": 0.0029375312866678637,
+      "worst_case_cost_usd": 0.006879191666666667,
+      "allocated_requests": 16,
+      "expected_new_usable": 16.0,
+      "reasons": []
+    },
+    "summarization": {
+      "category": "summarization",
+      "model": {
+        "category": "summarization",
+        "mu": 4.699437912434103,
+        "sigma": 0.29999999999999993,
+        "n_uncensored": 9,
+        "n_censored": 0,
+        "source": "map_censored_lognormal",
+        "median": 109.9
+      },
+      "observed_rows": 9,
+      "observed_usable": 9,
+      "observed_censor_rate": 0.0,
+      "cap": 512,
+      "predicted_censor_rate": 0.0,
+      "cap_at_top_of_ladder": false,
+      "mean_input_tokens": 1078.5,
+      "expected_output_tokens": 124.5,
+      "expected_cost_usd": 0.0034021741684133397,
+      "worst_case_cost_usd": 0.007276966666666667,
+      "allocated_requests": 15,
+      "expected_new_usable": 15.0,
+      "reasons": []
+    },
+    "tool_calling": {
+      "category": "tool_calling",
+      "model": {
+        "category": "tool_calling",
+        "mu": 3.9694379124341026,
+        "sigma": 0.44999999999999996,
+        "n_uncensored": 4,
+        "n_censored": 0,
+        "source": "map_censored_lognormal",
+        "median": 53.0
+      },
+      "observed_rows": 4,
+      "observed_usable": 4,
+      "observed_censor_rate": 0.0,
+      "cap": 512,
+      "predicted_censor_rate": 0.0,
+      "cap_at_top_of_ladder": false,
+      "mean_input_tokens": 504.9,
+      "expected_output_tokens": 63.5,
+      "expected_cost_usd": 0.0016446920490604633,
+      "worst_case_cost_usd": 0.006129891666666667,
+      "allocated_requests": 32,
+      "expected_new_usable": 32.0,
+      "reasons": []
+    },
+    "translation": {
+      "category": "translation",
+      "model": {
+        "category": "translation",
+        "mu": 6.0494379124341044,
+        "sigma": 0.5999999999999999,
+        "n_uncensored": 7,
+        "n_censored": 5,
+        "source": "map_censored_lognormal",
+        "median": 423.9
+      },
+      "observed_rows": 12,
+      "observed_usable": 7,
+      "observed_censor_rate": 0.4166666666666667,
+      "cap": 2048,
+      "predicted_censor_rate": 0.01,
+      "cap_at_top_of_ladder": false,
+      "mean_input_tokens": 777.5,
+      "expected_output_tokens": 544.0,
+      "expected_cost_usd": 0.006994729011084551,
+      "worst_case_cost_usd": 0.022034983333333334,
+      "allocated_requests": 10,
+      "expected_new_usable": 9.9,
+      "reasons": [
+        "observed censor rate 42% at cap 512 -> cap 2048"
+      ]
+    },
+    "verbose_explanation": {
+      "category": "verbose_explanation",
+      "model": {
+        "category": "verbose_explanation",
+        "mu": 7.869437912434106,
+        "sigma": 0.6749999999999999,
+        "n_uncensored": 0,
+        "n_censored": 12,
+        "source": "map_censored_lognormal",
+        "median": 2616.1
+      },
+      "observed_rows": 12,
+      "observed_usable": 0,
+      "observed_censor_rate": 1.0,
+      "cap": 4096,
+      "predicted_censor_rate": 0.289,
+      "cap_at_top_of_ladder": true,
+      "mean_input_tokens": 1034.0,
+      "expected_output_tokens": 2712.1,
+      "expected_cost_usd": 0.02918900589628721,
+      "worst_case_cost_usd": 0.0430281,
+      "allocated_requests": 10,
+      "expected_new_usable": 7.1,
+      "reasons": [
+        "observed censor rate 100% at cap 512 -> cap 4096",
+        "no usable labels yet"
+      ]
+    }
+  },
+  "store_observations_used": 180,
+  "approval_required": "Paid API calls. Requires explicit approval and a manual workflow dispatch with approve_paid_call=true. No request has been sent.",
+  "generated_at": "2026-10-11T16:19:04.189686+00:00"
+}
