@@ -14,9 +14,7 @@ from scripts.prepare_scheduled_live import make_config
 EASTERN = ZoneInfo("America/New_York")
 
 
-def campaign_config(
-    *, provider: str, model: str, run_id: str, root: str
-) -> dict[str, object]:
+def campaign_config(*, provider: str, model: str, run_id: str, root: str) -> dict[str, object]:
     if not run_id.isdecimal() or not 1 <= len(run_id) <= 20:
         raise ValueError("Expected a numeric GitHub run ID")
     config = make_config(
@@ -34,12 +32,14 @@ def campaign_config(
         "bank_files": [],
         "require_approved_for_live": True,
     }
-    config["targets"] = [{
-        "provider": provider,
-        "model": model,
-        "efforts": [None],
-        "max_output_tokens": [512],
-    }]
+    config["targets"] = [
+        {
+            "provider": provider,
+            "model": model,
+            "efforts": [None],
+            "max_output_tokens": [512],
+        }
+    ]
     config["sampling"] = {"configs_per_prompt": 1}
     config["budget"] = {"max_requests": 40, "max_cost_usd": "0.75"}
     config["execution"] = {
