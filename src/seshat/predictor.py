@@ -58,3 +58,44 @@ class BaselinePredictor:
             confidence=0.35,
             predictor_version=self.version,
         )
+
+
+class TrainedPredictor:
+    """Opt-in real-label model; artifact paths must be operator-controlled."""
+
+    def __init__(self, artifact_path: str) -> None:
+        import joblib
+
+        # Never load joblib/pickle artifacts from untrusted upload sources.
+        bundle = joblib.load(artifact_path)
+        self._model = bundle["model"]
+        self._radius = float(bundle["radius"])
+        self.version = str(bundle["version"])
+
+    def predict(self, prompt: str, model: str, effort: str) -> Prediction:
+        import math
+
+        import pandas as pd
+
+        from seshat.train_predictor import _features
+
+        features = extract_prompt_features(prompt)
+        frame = pd.DataFrame(
+            [
+                {
+                    "prompt_word_count": features.word_count,
+                    "requested_model": model,
+                    "requested_effort": None if effort == "auto" else effort,
+                }
+            ]
+        )
+        prediction = float(self._model.predict(_features(frame))[0])
+        point = max(0, round(math.expm1(min(max(prediction, 0), 16))))
+        radius = math.ceil(self._radius)
+        return Prediction(
+            predicted_output_tokens=point,
+            lower_bound=max(0, point - radius),
+            upper_bound=point + radius,
+            confidence=0.90,
+            predictor_version=self.version,
+        )

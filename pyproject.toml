@@ -71,5 +71,5 @@ strict = true
 
 [[tool.mypy.overrides]]
 # Third-party packages without type information.
-module = ["pyarrow", "pyarrow.*", "yaml", "anthropic", "anthropic.*", "openai", "openai.*", "google", "google.*"]
+module = ["pyarrow", "pyarrow.*", "yaml", "anthropic", "anthropic.*", "openai", "openai.*", "google", "google.*", "joblib", "sklearn", "sklearn.*"]
 ignore_missing_imports = true
