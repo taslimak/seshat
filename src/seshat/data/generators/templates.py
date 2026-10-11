@@ -16,7 +16,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
-TEMPLATE_LIBRARY_VERSION = "1.0.0"
+TEMPLATE_LIBRARY_VERSION = "1.1.0"  # 1.1.0: finer family keys (reasoning, math, classification)
 
 TOPICS = [
     "photosynthesis",
@@ -51,6 +51,27 @@ ENTITIES = [
     ("Palisade Robotics", "Seoul"),
     ("Juniper Credit", "Austin"),
     ("Tidewater Shipping", "Rotterdam"),
+    # 1.1.0: wider pools => more independent prompt families per category.
+    ("Lumen Analytics", "Melbourne"),
+    ("Cobalt Mining", "Santiago"),
+    ("Verdant Farms", "Des Moines"),
+    ("Harbor Telecom", "Singapore"),
+    ("Stratus Airlines", "Doha"),
+    ("Granite Construction Group", "Calgary"),
+    ("Saffron Hospitality", "Mumbai"),
+    ("Polar Cold Chain", "Helsinki"),
+    ("Meridian Pharmacy", "Cape Town"),
+    ("Atlas Payroll", "Warsaw"),
+    ("Beacon Education", "Bogota"),
+    ("Cascade Water Utility", "Portland"),
+    ("Ember Games", "Montreal"),
+    ("Orchid Cosmetics", "Bangkok"),
+    ("Summit Outdoor Gear", "Zurich"),
+    ("Riverbend Hospital", "Leeds"),
+    ("Nimbus Cloud Hosting", "Frankfurt"),
+    ("Coral Reef Tourism", "Cairns"),
+    ("Ironclad Security", "Tel Aviv"),
+    ("Willow Home Furnishings", "Copenhagen"),
 ]
 PEOPLE = [
     "Amara Okafor",
@@ -69,6 +90,12 @@ LANGUAGES = [
     ("Japanese", "ja"),
     ("Portuguese", "pt"),
     ("Italian", "it"),
+    ("Dutch", "nl"),
+    ("Polish", "pl"),
+    ("Turkish", "tr"),
+    ("Korean", "ko"),
+    ("Indonesian", "id"),
+    ("Swahili", "sw"),
 ]
 SENTIMENTS = ["positive", "negative", "neutral", "mixed"]
 _SENTENCE_PARTS = {
@@ -128,6 +155,26 @@ _FUNCTION_NAMES = [
     "top_k_frequent",
     "validate_iban",
     "schedule_jobs",
+    "lru_cache_put",
+    "parse_csv_line",
+    "topological_sort",
+    "debounce_events",
+    "compress_runs",
+    "match_wildcard",
+    "group_anagrams",
+    "retry_with_backoff",
+    "diff_dicts",
+    "paginate_results",
+    "slugify_title",
+    "detect_cycle",
+    "bucket_timestamps",
+    "reconcile_ledgers",
+    "mask_card_number",
+    "levenshtein_distance",
+    "split_bill",
+    "parse_duration",
+    "merge_sorted_streams",
+    "validate_password",
 ]
 _BUG_KINDS = [
     "an off-by-one error in a loop bound",
@@ -278,20 +325,22 @@ def _verbose(rng: random.Random, s: Stratum) -> Built:
 
 def _math(rng: random.Random, s: Stratum) -> Built:
     a, b, c = rng.randint(2, 40), rng.randint(2, 40), rng.randint(2, 9)
-    problem = rng.choice(
-        [
-            f"A tank fills at {a} liters per minute and drains at {b} liters per minute. Starting with {c * 10} liters, when is it empty or full at 500 liters?",
-            f"Prove that the sum of the first n odd numbers equals n^2, then compute it for n = {a}.",
-            f"Solve for x: {a}x + {b} = {c}x^2. Show each step.",
-            f"How many integers between 1 and {a * 25} are divisible by {c} but not by {c + 1}?",
-        ]
-    )
+    problems = [
+        f"A tank fills at {a} liters per minute and drains at {b} liters per minute. Starting with {c * 10} liters, when is it empty or full at 500 liters?",
+        f"Prove that the sum of the first n odd numbers equals n^2, then compute it for n = {a}.",
+        f"Solve for x: {a}x + {b} = {c}x^2. Show each step.",
+        f"How many integers between 1 and {a * 25} are divisible by {c} but not by {c + 1}?",
+    ]
+    kind = rng.randrange(len(problems))  # same RNG draw as rng.choice
+    problem = problems[kind]
     if s.name != "short":
         problem += "\n\nAlso consider these related cases:\n" + "\n".join(
             f"{i + 1}. Replace {a} with {a + i * 3} and explain what changes."
             for i in range(max(1, s.target(rng) // 25))
         )
-    return Built(problem, subcategory="word_problem", topic_key=f"math-{a % 7}", difficulty="high")
+    return Built(
+        problem, subcategory="word_problem", topic_key=f"math-{kind}-{a}", difficulty="high"
+    )
 
 
 def _reasoning(rng: random.Random, s: Stratum) -> Built:
@@ -307,7 +356,9 @@ def _reasoning(rng: random.Random, s: Stratum) -> Built:
         "Solve this seating puzzle and justify each deduction.\n"
         + "\n".join(f"- {c}" for c in clues),
         subcategory="logic_puzzle",
-        topic_key="seating",
+        # One family per cast of people (was a single family for the whole category,
+        # which forced every reasoning prompt into one split).
+        topic_key="seating-" + "|".join(sorted(people)),
         difficulty="high",
     )
 
@@ -372,7 +423,7 @@ def _classification(rng: random.Random, s: Stratum) -> Built:
         f"Classify the sentiment of each statement as one of: {labels}. Reply with one label per line.\n"
         + "\n".join(f"{i + 1}. {r}" for i, r in enumerate(reviews)),
         subcategory="sentiment",
-        topic_key=f"reviews-{len(reviews)}",
+        topic_key=f"reviews-{len(reviews)}-{reviews[0]}",
         difficulty="low",
     )
 

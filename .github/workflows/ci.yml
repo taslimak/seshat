@@ -43,6 +43,14 @@ jobs:
           seshat-data stats
           seshat-data predict
           seshat-data compare
+      - name: Consolidation smoke test (fixture store; real stores refuse mock data)
+        run: |
+          seshat-data consolidate --source data --store /tmp/fixture-store --store-kind fixture
+          seshat-data consolidate --source data --store /tmp/fixture-store --store-kind fixture | grep -q already_imported
+          if seshat-data consolidate --source data --store /tmp/real-store; then
+            echo "a real store must refuse mock-provider experiments" && exit 1
+          fi
+          seshat-data readiness --root /tmp/fixture-store --markdown
       - name: Live collection is refused without a cost cap
         run: |
           if seshat-data collect --config configs/experiments/live_pilot.yaml --execute-live; then

@@ -1,32 +1,53 @@
-# Accumulating real API observations and evaluating the predictor
+# Training readiness
 
-The trained predictor implementation is merged, but the two-response pilot is
-not sufficient to train it. This update adds a read-only readiness report and
-baseline comparison to the gated persistent paid-collection job.
+`seshat-data readiness --root <store> [--markdown]` (also written to
+`reports/training_readiness.*` after each consolidation) answers *can the
+registered trainer run on this data, and if not, what is missing?*
 
-After a real paid run completes on the dedicated persistent runner, the job:
-1. Normalizes real observations into the same **durable** data root.
-2. Validates accumulated observations.
-3. Scores stored requests with the existing baseline.
-4. Records a comparison CSV at `exports/baseline_comparison.csv`.
-5. Writes `reports/training_readiness.json`, showing counts of eligible
-   verified, uncensored, controlled API observations and provider coverage.
+## How it counts
 
-The report is a *preliminary gate*. It does not guarantee enough distinct
-leakage groups in each training, calibration and test split. Once enough real
-data is available, separately run `prepare-training` and
-`python -m seshat.train_predictor` and compare protected holdout performance.
+1. Rows are selected exactly as `prepare-training` selects them (validated,
+   real, controlled-experiment) and grouped with the same union-find leakage
+   groups (prompt family, prompt hash, conversation hash, conversation id).
+2. The **exact** seeded group-to-split assignment is simulated.
+3. Per split it counts **usable** rows — what `train_predictor` accepts:
+   verified, uncensored, with an observed output count.
+4. It compares them with the trainer's minimums (train ≥ 100, calibration ≥ 20,
+   test ≥ 20) for two ratio presets.
 
-**This PR makes no API calls and does not enable paid collection.** The paid job
-still needs repository variable `SESHAT_ENABLE_SCHEDULED_PAID=true`, a
-private persistent self-hosted runner, provider credentials stored only as
-GitHub Actions Secrets, and provider-side spending restrictions.
+| Preset | train / validation / calibration / test | Usable rows implied by the minimums |
+|---|---|---:|
+| `default` (historical) | 0.64 / 0.12 / 0.08 / 0.16 | **250** (calibration is binding) |
+| `real_label` (new) | 0.60 / 0.10 / 0.15 / 0.15 | **167** |
 
-GitHub-hosted smoke-test ZIP artifacts remain **ephemeral and separate** from
-this durable store. They must be securely imported into persistent storage
-before they contribute to cumulative training. Avoid using fixture labels as
-real training targets or counting censored requests as complete output lengths.
+The earlier readiness script treated 140 usable rows as sufficient, which is
+not reachable under either preset. Use `prepare-training --ratios real_label`
+for real-label datasets.
 
-Limitations: the initial baseline comparison is descriptive, not a held-out
-evaluation. Test-set MAE and interval coverage are produced separately after
-the training dataset is prepared.
+Groups are allocated by count, not size, and censored rows still occupy
+groups, so actual per-split usable counts vary; the report shows them and
+estimates the additional usable rows needed (`shortfall / ratio` for the
+worst split, assuming new independent groups).
+
+It also lists coverage gaps: categories with no usable labels, fewer than 4
+independent usable groups, censor rates above 20%, and single-level factors
+(one model, one effort).
+
+## Baseline diagnostics
+
+`seshat-data evaluate-baseline --root <store> --output-dir <dir>` scores the
+heuristic baseline on every real observation:
+
+* point metrics (MAE, RMSE, median AE, WAPE, signed bias, median APE) on
+  **uncensored** rows only, with 95% **group-bootstrap** CIs (resampling prompt
+  families);
+* interval coverage and width of the (uncalibrated) baseline interval;
+* for **censored** rows, which are lower bounds: the share where the
+  prediction is below the cap (known under-prediction) and where the interval
+  upper bound is below the cap (known miss);
+* slices by category, prompt-length bucket, effort and model, with cost per
+  usable observation.
+
+This is out-of-sample for the unfitted heuristic but subject to selection
+bias (uncensored rows over-represent short outputs). It is a diagnostic, not
+the protected-holdout evaluation of trained candidates.

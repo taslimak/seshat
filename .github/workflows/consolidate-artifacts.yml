@@ -1,0 +1,155 @@
+name: Consolidate calibration artifacts
+
+# Imports seshat-calibration-* artifacts into the durable PRIVATE data store
+# repository (artifacts expire after 30 days). No provider API calls, no spend.
+#
+# Prerequisites (see docs/DATA_STORE.md):
+#   * repository variable SESHAT_DATA_STORE_REPO = "<owner>/<private-repo>"
+#   * repository secret   SESHAT_DATA_STORE_TOKEN = fine-grained token with
+#     Contents: read & write (and Metadata: read) on that repository only.
+# Without them the job exits successfully after printing a notice.
+
+on:
+  workflow_run:
+    workflows: ["Manual calibration data batch"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      run_ids:
+        description: "Space-separated workflow run IDs whose seshat-calibration-* artifacts to import"
+        type: string
+        required: true
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: seshat-data-store
+  cancel-in-progress: false
+
+jobs:
+  consolidate:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      STORE_REPO: ${{ vars.SESHAT_DATA_STORE_REPO }}
+      HAS_STORE_TOKEN: ${{ secrets.SESHAT_DATA_STORE_TOKEN != '' }}
+      RUN_IDS: ${{ github.event_name == 'workflow_dispatch' && inputs.run_ids || github.event.workflow_run.id }}
+    steps:
+      - name: Check store configuration
+        id: cfg
+        shell: bash
+        run: |
+          if [ -z "${STORE_REPO}" ] || [ "${HAS_STORE_TOKEN}" != "true" ]; then
+            echo "::notice::SESHAT_DATA_STORE_REPO / SESHAT_DATA_STORE_TOKEN not configured; nothing imported. See docs/DATA_STORE.md"
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+          for id in $RUN_IDS; do
+            case "$id" in (*[!0-9]*|'') echo "Invalid run id: $id"; exit 1 ;; esac
+          done
+
+      - uses: actions/checkout@v4
+        if: steps.cfg.outputs.enabled == 'true'
+
+      - name: Refuse a public store repository
+        if: steps.cfg.outputs.enabled == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.SESHAT_DATA_STORE_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          private=$(gh api "repos/${STORE_REPO}" --jq .private)
+          if [ "$private" != "true" ]; then
+            echo "Store repository ${STORE_REPO} must be private (plan.jsonl holds request messages)"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.cfg.outputs.enabled == 'true'
+        with:
+          repository: ${{ vars.SESHAT_DATA_STORE_REPO }}
+          token: ${{ secrets.SESHAT_DATA_STORE_TOKEN }}
+          path: store
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        if: steps.cfg.outputs.enabled == 'true'
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install Seshat
+        if: steps.cfg.outputs.enabled == 'true'
+        run: python -m pip install -e ".[data]"
+
+      - name: Download artifact archives (original ZIPs, digest-verified)
+        if: steps.cfg.outputs.enabled == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p incoming
+          for run in $RUN_IDS; do
+            gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run}/artifacts" \
+              --jq '.artifacts[] | select(.name | startswith("seshat-calibration-")) | select(.expired | not) | [.id, .name, (.digest // "")] | @tsv' \
+              > "incoming/${run}.tsv"
+            if [ ! -s "incoming/${run}.tsv" ]; then
+              echo "::warning::run ${run}: no unexpired seshat-calibration-* artifact"
+            fi
+            while IFS=$'\t' read -r id name digest; do
+              gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${id}/zip" > "incoming/${id}.zip"
+              actual="sha256:$(sha256sum "incoming/${id}.zip" | cut -d' ' -f1)"
+              if [ -n "$digest" ] && [ "$digest" != "$actual" ]; then
+                echo "Digest mismatch for artifact ${id}: ${digest} != ${actual}"; exit 1
+              fi
+              printf '%s\t%s\t%s\t%s\n' "$run" "$id" "$name" "$actual" >> incoming/manifest.tsv
+            done < "incoming/${run}.tsv"
+          done
+
+      - name: Consolidate into the store
+        if: steps.cfg.outputs.enabled == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f incoming/manifest.tsv || { echo "Nothing to import"; exit 0; }
+          while IFS=$'\t' read -r run id name digest; do
+            python -m seshat.data.cli consolidate --store store --store-kind real \
+              --source "incoming/${id}.zip" \
+              --meta "github_repository=${GITHUB_REPOSITORY}" \
+              --meta "github_run_id=${run}" \
+              --meta "artifact_id=${id}" \
+              --meta "artifact_name=${name}" \
+              --meta "artifact_digest=${digest}" \
+              --meta "imported_by_run=${GITHUB_RUN_ID}" > "incoming/${id}.result.json"
+          done < incoming/manifest.tsv
+          python -m seshat.data.cli store-report --store store > /dev/null
+
+      - name: Commit and push the store
+        if: steps.cfg.outputs.enabled == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd store
+          git config user.name "seshat-consolidation[bot]"
+          git config user.email "seshat-consolidation@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Store unchanged (already imported)"; exit 0
+          fi
+          git commit -q -m "Import calibration artifacts from runs: ${RUN_IDS}" \
+            -m "Source repository: ${GITHUB_REPOSITORY}; consolidation run ${GITHUB_RUN_ID}"
+          git push -q
+
+      - name: Aggregate readiness summary (counts only, no prompt content)
+        if: steps.cfg.outputs.enabled == 'true'
+        shell: bash
+        run: |
+          test -f store/reports/training_readiness.md && \
+            cat store/reports/training_readiness.md >> "$GITHUB_STEP_SUMMARY" || true

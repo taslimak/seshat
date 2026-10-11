@@ -45,6 +45,24 @@ def _decimal(value: str) -> Decimal:
     return result
 
 
+def _key_value(item: str) -> tuple[str, str]:
+    key, sep, value = item.partition("=")
+    if not sep or not key:
+        raise ValueError(f"Expected KEY=VALUE, got {item!r}")
+    return key.strip(), value.strip()
+
+
+def _ratios(value: str | None) -> dict[str, float] | None:
+    if not value:
+        return None
+    if value == "real_label":
+        from seshat.data.training import REAL_LABEL_RATIOS
+
+        return dict(REAL_LABEL_RATIOS)
+    pairs = [_key_value(part) for part in value.split(",") if part.strip()]
+    return {key: float(val) for key, val in pairs}
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="seshat-data",
@@ -153,6 +171,10 @@ def _parser() -> argparse.ArgumentParser:
         help="Also use real labels from this source (default: controlled experiments only)",
     )
     prep.add_argument(
+        "--ratios",
+        help="'real_label' preset or e.g. train=0.6,validation=0.1,calibration=0.15,test=0.15",
+    )
+    prep.add_argument(
         "--group-by-template",
         action="store_true",
         help="Also keep each prompt template in one split",
@@ -187,6 +209,64 @@ def _parser() -> argparse.ArgumentParser:
     review.add_argument("--status", choices=["approved", "rejected", "unreviewed"], required=True)
     review.add_argument("--reviewer", required=True)
     review.add_argument("--notes")
+
+    cons = sub.add_parser(
+        "consolidate",
+        help="Merge collection artifacts (ZIP or directory) into a durable canonical store",
+    )
+    cons.add_argument("--source", nargs="+", required=True, help="Artifact ZIP(s) or dir(s)")
+    cons.add_argument("--store", required=True, help="Store root (keep it in private storage)")
+    cons.add_argument("--store-kind", choices=["real", "fixture"], default="real")
+    cons.add_argument(
+        "--meta",
+        action="append",
+        default=[],
+        metavar="KEY=VALUE",
+        help="Provenance metadata, e.g. github_run_id=123 artifact_id=456 (repeatable)",
+    )
+    cons.add_argument("--no-archive", action="store_true", help="Do not keep the source ZIP")
+
+    srep = sub.add_parser("store-report", help="Re-validate a store and regenerate its reports")
+    srep.add_argument("--store", required=True)
+
+    ready = sub.add_parser(
+        "readiness", help="Per-split usable-label counts from the exact training split"
+    )
+    ready.add_argument("--root", default=DEFAULT_ROOT)
+    ready.add_argument("--seed", type=int, default=1729)
+    ready.add_argument("--markdown", action="store_true", help="Print Markdown instead of JSON")
+
+    ev = sub.add_parser(
+        "evaluate-baseline",
+        help="Score the heuristic baseline on real observations (censoring-aware, bootstrap CIs)",
+    )
+    ev.add_argument("--root", default=DEFAULT_ROOT)
+    ev.add_argument("--output-dir", help="Write baseline_evaluation.{json,md} here")
+    ev.add_argument("--n-boot", type=int, default=2000)
+
+    plan = sub.add_parser(
+        "plan-batch",
+        help="Plan the next adaptive paid batch from the store (dry run; sends nothing)",
+    )
+    plan.add_argument("--store", help="Consolidated real store (omit to plan from priors)")
+    plan.add_argument("--provider", required=True)
+    plan.add_argument("--model", required=True)
+    plan.add_argument("--experiment-id", required=True)
+    plan.add_argument("--budget-usd", type=_decimal, default=Decimal("2.00"))
+    plan.add_argument(
+        "--efforts", nargs="+", help="Effort levels (default: low medium high if supported)"
+    )
+    plan.add_argument("--seed", type=int)
+    plan.add_argument("--pool-size", type=int, default=1020)
+    plan.add_argument("--max-censor-rate", type=float, default=0.10)
+    plan.add_argument(
+        "--monthly-target-usd",
+        type=_decimal,
+        default=Decimal("10.00"),
+        help="Refuse if store month-to-date estimated spend + budget exceeds this",
+    )
+    plan.add_argument("--output", required=True, help="Collector config to write (YAML)")
+    plan.add_argument("--report", help="Dry-run report path (Markdown; JSON alongside)")
     return parser
 
 
@@ -399,6 +479,7 @@ def _dispatch(args: argparse.Namespace) -> int:
             temporal_holdout_fraction=args.temporal_holdout,
             group_by=group_by,
             include_sources=tuple(args.include_source),
+            ratios=_ratios(args.ratios),
         )
         _print(manifest)
         return 0
@@ -460,6 +541,125 @@ def _dispatch(args: argparse.Namespace) -> int:
         )
         _print({"updated": changed, "status": args.status})
         return 0
+    if args.command == "consolidate":
+        from seshat.data.consolidate import consolidate
+
+        metadata = dict(_key_value(item) for item in args.meta)
+        results = [
+            consolidate(
+                source,
+                args.store,
+                store_kind=args.store_kind,
+                metadata=metadata,
+                keep_archive=not args.no_archive,
+                write_reports=index == len(args.source) - 1,
+            )
+            for index, source in enumerate(args.source)
+        ]
+        _print(
+            [{k: v for k, v in result.items() if k not in {"source_files"}} for result in results]
+        )
+        return 0
+
+    if args.command == "store-report":
+        from seshat.data.consolidate import refresh_reports
+
+        _print(refresh_reports(args.store))
+        return 0
+
+    if args.command == "readiness":
+        from seshat.data.readiness import readiness_report, render_readiness_markdown
+
+        report = readiness_report(args.root, seed=args.seed)
+        if args.markdown:
+            print(render_readiness_markdown(report))
+        else:
+            _print(report)
+        return 0
+
+    if args.command == "evaluate-baseline":
+        from seshat.data.evaluation import evaluate_baseline, render_evaluation_markdown
+
+        evaluation = evaluate_baseline(args.root, n_boot=args.n_boot)
+        if args.output_dir:
+            out = Path(args.output_dir)
+            out.mkdir(parents=True, exist_ok=True)
+            (out / "baseline_evaluation.json").write_text(
+                json.dumps(evaluation, indent=2, default=str) + "\n", encoding="utf-8"
+            )
+            (out / "baseline_evaluation.md").write_text(
+                render_evaluation_markdown(evaluation, "Baseline evaluation on real observations"),
+                encoding="utf-8",
+            )
+        _print(
+            {
+                k: evaluation[k]
+                for k in ("rows", "uncensored_rows", "censored_rows", "point", "interval")
+            }
+            | {"censored": evaluation["censored"], "bootstrap_95": evaluation["bootstrap_95"]}
+        )
+        return 0
+
+    if args.command == "plan-batch":
+        import yaml
+
+        from seshat.data.readiness import readiness_report
+        from seshat.experiments.adaptive import plan_next_batch, render_plan_markdown
+        from seshat.experiments.config import CollectionConfig
+
+        efforts = (
+            [None if e in {"none_unset", "unset"} else e for e in args.efforts]
+            if args.efforts
+            else None
+        )
+        month = datetime.now(UTC).strftime("%Y-%m")
+        if args.store:
+            from seshat.data.consolidate import month_to_date_spend
+
+            spent = month_to_date_spend(args.store, month)
+            if spent + args.budget_usd > args.monthly_target_usd:
+                raise ValueError(
+                    f"Month-to-date estimated spend ${spent} + batch budget ${args.budget_usd} "
+                    f"exceeds the monthly target ${args.monthly_target_usd} for {month}"
+                )
+        batch = plan_next_batch(
+            store_root=args.store,
+            provider=args.provider,
+            model=args.model,
+            experiment_id=args.experiment_id,
+            budget_usd=args.budget_usd,
+            efforts=efforts,
+            seed=args.seed,
+            prompt_pool_size=args.pool_size,
+            max_censor_rate=args.max_censor_rate,
+        )
+        CollectionConfig.model_validate(batch["config"])  # fail before writing
+        output = Path(args.output)
+        output.parent.mkdir(parents=True, exist_ok=True)
+
+        # JSON round-trip removes shared references, so the YAML has no anchors/aliases.
+        plain = json.loads(json.dumps(batch["config"]))
+        output.write_text(yaml.safe_dump(plain, sort_keys=False), encoding="utf-8")
+        if args.report:
+            readiness = readiness_report(args.store) if args.store else None
+            report_path = Path(args.report)
+            report_path.parent.mkdir(parents=True, exist_ok=True)
+            report_path.write_text(
+                render_plan_markdown(batch["report"], readiness), encoding="utf-8"
+            )
+            report_path.with_suffix(".json").write_text(
+                json.dumps(batch["report"], indent=2) + "\n", encoding="utf-8"
+            )
+        summary_keys = (
+            "experiment_id",
+            "planned_requests",
+            "expected_cost_usd",
+            "expected_new_usable_rows",
+            "approval_required",
+        )
+        _print({k: batch["report"][k] for k in summary_keys} | {"config": str(output)})
+        return 0
+
     raise AssertionError(f"unhandled command {args.command}")
 
 

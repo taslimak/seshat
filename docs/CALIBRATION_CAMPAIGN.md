@@ -39,3 +39,40 @@ The registered real-label trainer requires 100 verified uncensored training,
 20 calibration and 20 test rows, across leakage-disjoint groups. Even 140 raw
 successful responses may be inadequate due to censoring and split allocations.
 This workflow does not auto-train or deploy an insufficient model.
+
+## Adaptive batches (recommended from the second batch on)
+
+The standard campaign above gives every category the same 512-token cap and
+default effort. On `gpt-6.1-sol` that censored 36.7% of responses (66/180) and
+produced no complete code-generation, code-review or verbose-explanation
+labels, while ~half the spend went to truncated outputs. Adaptive batches fix
+this with experimental design rather than volume:
+
+1. Consolidate the previous artifacts (see [DATA_STORE.md](DATA_STORE.md)).
+2. Plan (dry run, no requests):
+
+   ```bash
+   seshat-data plan-batch --store <store> --provider openai --model gpt-6.1-sol \
+     --experiment-id adaptive_<yyyymmdd> \
+     --output configs/experiments/batches/adaptive_<yyyymmdd>.yaml \
+     --report configs/experiments/batches/adaptive_<yyyymmdd>.md
+   ```
+
+   Per category it fits a log-normal output-length model in which truncated
+   responses are **right-censored** (lower bounds, never exact labels), picks
+   the smallest cap in {512, 1024, 2048, 4096} with ≤10% predicted truncation
+   at the highest planned effort, balances efforts `low/medium/high`, repeats
+   10% of cells twice to measure run-to-run variance, and allocates requests by
+   diminishing returns per `cost^0.5` with a per-category floor and share cap
+   so long, realistic workloads stay represented. Expected spend targets 85% of
+   the $2.00 cap. It refuses budgets above $2.00 and batches that would push the
+   store's month-to-date estimated spend past the $10 target.
+3. Open a PR with the YAML and the dry-run report. **Merging is the review;
+   dispatching the workflow with `approve_paid_call=true` is the approval.**
+4. Run *Manual calibration data batch* with `config_path` set to the YAML.
+   `scripts/use_batch_config.py` refuses uncommitted configs, configs outside
+   `configs/experiments/batches/`, provider/model mismatches, unverified models,
+   caps above $2.00 and prompt/response text retention, and appends the run id
+   to `experiment_id` so a re-dispatch never resumes another run's samples.
+5. The consolidation workflow imports the artifact into the store and refreshes
+   readiness, quality and spend reports.
