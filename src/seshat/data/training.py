@@ -224,30 +224,23 @@ def _git_revision() -> dict[str, Any]:
     return {"commit": sha, "dirty": dirty}
 
 
-def prepare_training_dataset(
-    root: str | Path,
-    version: str,
+# Ratios sized so the trainer's minimums (train>=100, calibration>=20, test>=20
+# usable rows) are reachable with ~170 usable labels instead of ~250 under
+# DEFAULT_RATIOS (whose 8% calibration share is the binding constraint).
+REAL_LABEL_RATIOS = {"train": 0.60, "validation": 0.10, "calibration": 0.15, "test": 0.15}
+
+
+def select_labeled_rows(
+    layout: StorageLayout,
     *,
     label_origin: LabelOrigin = "real",
-    seed: int = 1729,
-    ratios: dict[str, float] | None = None,
-    temporal_holdout_fraction: float = 0.0,
     group_by: tuple[str, ...] = DEFAULT_GROUP_BY,
     include_sources: tuple[str, ...] = (),
-) -> dict[str, Any]:
-    """Build ``<root>/training/dataset_v<version>[_synthetic]/``.
+) -> tuple[pd.DataFrame, dict[str, int]]:
+    """Eligible rows of one label origin with leakage groups and censoring flags.
 
-    ``include_sources`` adds ``consented_api_telemetry`` and/or
-    ``authorized_log_import`` rows to a real-label dataset; by default only
-    ``controlled_experiment`` labels are used.
+    Returns the rows and the per-source counts excluded by the source policy.
     """
-    if not 0.0 <= temporal_holdout_fraction < 1.0:
-        raise ValueError("temporal_holdout_fraction must be in [0, 1)")
-    layout = StorageLayout(root)
-    suffix = "_synthetic" if label_origin == "synthetic" else ""
-    target_dir = layout.training / f"dataset_v{version}{suffix}"
-    if target_dir.exists():
-        raise FileExistsError(f"{target_dir} already exists; training datasets are immutable")
     joined = _join(layout)
     unknown = set(include_sources) - OPTIONAL_REAL_SOURCES
     if unknown:
@@ -255,21 +248,21 @@ def prepare_training_dataset(
             f"include_sources must be among {sorted(OPTIONAL_REAL_SOURCES)}, got {sorted(unknown)}"
         )
     selected = joined[joined["data_origin"] == label_origin].copy()
+    excluded_sources: dict[str, int] = {}
     if label_origin == "real":
         allowed = {SourceType.CONTROLLED_EXPERIMENT.value, *include_sources}
-        excluded_sources = (
-            selected.loc[~selected["source_type"].isin(allowed), "source_type"]
+        excluded_sources = {
+            str(k): int(v)
+            for k, v in selected.loc[~selected["source_type"].isin(allowed), "source_type"]
             .value_counts()
-            .to_dict()
-        )
+            .items()
+        }
         selected = selected[selected["source_type"].isin(allowed)]
         if selected.empty and excluded_sources:
             raise ValueError(
                 f"No eligible controlled-experiment labels; excluded by source policy: "
                 f"{excluded_sources}. Pass --include-source to use them."
             )
-    else:
-        excluded_sources = {}
     if selected.empty:
         available = sorted(joined["data_origin"].unique())
         hint = (
@@ -286,30 +279,19 @@ def prepare_training_dataset(
         selected["label_quality"] == "censored"
     )
     selected["label_origin"] = label_origin
-    features = [c for c in TRAINING_FEATURES if c in selected.columns]
-    assert_training_features(features)
-    identifiers = [
-        "sample_id",
-        "observation_id",
-        "prompt_id",
-        "prompt_family_id",
-        "prompt_template_id",
-        "split_group_id",
-        "experiment_id",
-        "design_cell_id",
-        "repetition_index",
-    ]
-    meta = [
-        "timestamp_utc",
-        "source_type",
-        "label_origin",
-        "label_quality",
-        "target_is_censored",
-        "decision",
-    ]
-    targets = [c for c in TARGET_COLUMNS if c in selected.columns]
-    dataset = selected[identifiers + meta + features + targets].copy()
+    return selected, excluded_sources
 
+
+def assign_dataset_splits(
+    dataset: pd.DataFrame,
+    *,
+    seed: int = 1729,
+    ratios: dict[str, float] | None = None,
+    temporal_holdout_fraction: float = 0.0,
+) -> tuple[pd.Series, dict[str, float], set[str]]:
+    """Split label per row (by leakage group), the ratios used and temporal test groups."""
+    if not 0.0 <= temporal_holdout_fraction < 1.0:
+        raise ValueError("temporal_holdout_fraction must be in [0, 1)")
     test_groups: set[str] = set()
     if temporal_holdout_fraction > 0:
         # Newest groups (by first observation) become the temporal test set.
@@ -339,11 +321,77 @@ def prepare_training_dataset(
     )[["split_group_id", "split"]]
     split_map = dict(zip(assignments["split_group_id"], assignments["split"], strict=True))
     split_map.update({g: "test" for g in test_groups})
-    dataset["split"] = dataset["split_group_id"].map(split_map)
-    if dataset["split"].isna().any():
+    splits = dataset["split_group_id"].map(split_map)
+    if splits.isna().any():
         raise AssertionError("unassigned rows after splitting")
-    if dataset.groupby("split_group_id")["split"].nunique().max() > 1:
+    if (
+        pd.DataFrame({"g": dataset["split_group_id"], "s": splits})
+        .groupby("g")["s"]
+        .nunique()
+        .max()
+        > 1
+    ):
         raise AssertionError("a leakage group spans several splits")
+    return splits.rename("split"), split_ratios, test_groups
+
+
+def prepare_training_dataset(
+    root: str | Path,
+    version: str,
+    *,
+    label_origin: LabelOrigin = "real",
+    seed: int = 1729,
+    ratios: dict[str, float] | None = None,
+    temporal_holdout_fraction: float = 0.0,
+    group_by: tuple[str, ...] = DEFAULT_GROUP_BY,
+    include_sources: tuple[str, ...] = (),
+) -> dict[str, Any]:
+    """Build ``<root>/training/dataset_v<version>[_synthetic]/``.
+
+    ``include_sources`` adds ``consented_api_telemetry`` and/or
+    ``authorized_log_import`` rows to a real-label dataset; by default only
+    ``controlled_experiment`` labels are used.
+    """
+    if not 0.0 <= temporal_holdout_fraction < 1.0:
+        raise ValueError("temporal_holdout_fraction must be in [0, 1)")
+    layout = StorageLayout(root)
+    suffix = "_synthetic" if label_origin == "synthetic" else ""
+    target_dir = layout.training / f"dataset_v{version}{suffix}"
+    if target_dir.exists():
+        raise FileExistsError(f"{target_dir} already exists; training datasets are immutable")
+    selected, excluded_sources = select_labeled_rows(
+        layout, label_origin=label_origin, group_by=group_by, include_sources=include_sources
+    )
+    features = [c for c in TRAINING_FEATURES if c in selected.columns]
+    assert_training_features(features)
+    identifiers = [
+        "sample_id",
+        "observation_id",
+        "prompt_id",
+        "prompt_family_id",
+        "prompt_template_id",
+        "split_group_id",
+        "experiment_id",
+        "design_cell_id",
+        "repetition_index",
+    ]
+    meta = [
+        "timestamp_utc",
+        "source_type",
+        "label_origin",
+        "label_quality",
+        "target_is_censored",
+        "decision",
+    ]
+    targets = [c for c in TARGET_COLUMNS if c in selected.columns]
+    dataset = selected[identifiers + meta + features + targets].copy()
+    splits, split_ratios, test_groups = assign_dataset_splits(
+        dataset,
+        seed=seed,
+        ratios=ratios,
+        temporal_holdout_fraction=temporal_holdout_fraction,
+    )
+    dataset["split"] = splits
 
     target_dir.mkdir(parents=True)
     files: dict[str, str] = {}

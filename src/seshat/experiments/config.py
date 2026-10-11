@@ -42,7 +42,17 @@ class PromptSourcesConfig(_Strict):
     generate: GeneratePromptsConfig | None = Field(default_factory=GeneratePromptsConfig)
     bank_files: list[str] = Field(default_factory=list)
     include_categories: list[str] | None = None
+    # Relative sampling weight per category (unlisted categories weigh 1.0; 0 drops a
+    # category). Weights shape the round-robin order, so ``budget.max_requests``
+    # trims the design in these proportions.
+    category_weights: dict[str, float] | None = None
     require_approved_for_live: bool = True
+
+    @model_validator(mode="after")
+    def _non_negative_weights(self) -> PromptSourcesConfig:
+        if self.category_weights and any(w < 0 for w in self.category_weights.values()):
+            raise ValueError("category_weights must be >= 0")
+        return self
 
 
 class StrataConfig(_Strict):
@@ -75,6 +85,9 @@ class TargetConfig(_Strict):
     temperature: list[float | None] = Field(default_factory=_unset_float)
     structured_output: list[bool] = Field(default_factory=lambda: [False])
     service_tier: str | None = None
+    # Restrict this target's configurations to prompts of these categories (e.g. a
+    # larger output cap only where shorter caps truncate). ``None`` = all categories.
+    categories: list[str] | None = Field(default=None, min_length=1)
 
     @model_validator(mode="after")
     def _positive_limits(self) -> TargetConfig:

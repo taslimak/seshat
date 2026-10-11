@@ -111,6 +111,20 @@ def test_max_cost_estimate_bounds_actual_cost() -> None:
     assert actual is not None and bound >= actual
 
 
+def test_long_context_tier_only_reserved_when_reachable() -> None:
+    entry = TABLE.lookup("openai", "gpt-6.1-sol", DAY)
+    assert entry is not None and entry.long_context_threshold == 272_000
+    small = max_cost_estimate("openai", entry, input_tokens=400, max_output_tokens=512)
+    assert small == Decimal("0.005920000000")  # standard $2 / $10 per 1M
+    near = max_cost_estimate("openai", entry, input_tokens=250_000, max_output_tokens=512)
+    assert near == Decimal("1.007680000000")  # within the safety margin: $4 / $15
+    for tokens in (200_000, 260_000, 300_000):
+        usage = normalize_openai({"input_tokens": tokens, "output_tokens": 512})
+        actual = compute_cost("openai", entry, usage).calculated_cost_usd
+        bound = max_cost_estimate("openai", entry, input_tokens=tokens, max_output_tokens=512)
+        assert actual is not None and bound >= actual
+
+
 def test_fixture_prices_are_marked() -> None:
     entry = TABLE.lookup("mock-openai", "mock-gpt", DAY)
     assert entry is not None and entry.is_fixture

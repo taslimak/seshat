@@ -58,6 +58,10 @@ class RunConfiguration(BaseModel):
     temperature: float | None
     structured_output: bool
     service_tier: str | None
+    categories: tuple[str, ...] | None = None
+
+    def applies_to(self, category: str) -> bool:
+        return self.categories is None or category in self.categories
 
     def factor_levels(self) -> dict[str, str]:
         return {
@@ -142,6 +146,10 @@ def expand_target(target: TargetConfig) -> list[RunConfiguration]:
                 target.service_tier,
             )
         )
+        categories = tuple(sorted(set(target.categories))) if target.categories else None
+        if categories:
+            # Only category-restricted targets change the key, so existing ids are stable.
+            key += "|categories=" + ",".join(categories)
         configs.append(
             RunConfiguration(
                 config_id=f"cfg_{stable_uuid(key).hex[:12]}",
@@ -157,6 +165,7 @@ def expand_target(target: TargetConfig) -> list[RunConfiguration]:
                 temperature=temperature,
                 structured_output=structured,
                 service_tier=target.service_tier,
+                categories=categories,
             )
         )
     return configs
@@ -239,6 +248,40 @@ def _imbalance(counter: Counter[str]) -> dict[str, Any]:
     }
 
 
+def _interleave(
+    by_stratum: dict[tuple[str, str], list[PromptRecord]],
+    weights: dict[str, float] | None,
+) -> list[PromptRecord]:
+    """Visit (stratum, category) queues round-robin, or by smooth weighted round-robin.
+
+    Without weights every queue gets one turn per round (the historical order). With
+    weights, a category's share of the order is proportional to its weight, split
+    evenly over that category's length strata; weight 0 drops the category.
+    """
+    keys = sorted(by_stratum)
+    queues = {key: list(by_stratum[key]) for key in keys}
+    ordered: list[PromptRecord] = []
+    if not weights:
+        while any(queues.values()):
+            for key in keys:
+                if queues[key]:
+                    ordered.append(queues[key].pop(0))
+        return ordered
+    strata_per_category = Counter(category for _, category in keys)
+    share = {key: float(weights.get(key[1], 1.0)) / strata_per_category[key[1]] for key in keys}
+    credit = dict.fromkeys(keys, 0.0)
+    while True:
+        active = [key for key in keys if queues[key] and share[key] > 0]
+        if not active:
+            return ordered
+        total = sum(share[key] for key in active)
+        for key in active:
+            credit[key] += share[key]
+        pick = max(active, key=lambda key: (credit[key], -keys.index(key)))
+        credit[pick] -= total
+        ordered.append(queues[pick].pop(0))
+
+
 def build_plan(config: CollectionConfig, prompts: list[PromptRecord], catalog: Catalog) -> Plan:
     rng = random.Random(f"design|{config.experiment_id}|{config.seed}")
     thresholds = LengthThresholds(config.strata.short_max_words, config.strata.medium_max_words)
@@ -254,12 +297,7 @@ def build_plan(config: CollectionConfig, prompts: list[PromptRecord], catalog: C
         by_stratum[(_length_stratum(prompt, thresholds), prompt.category)].append(prompt)
     for bucket in by_stratum.values():
         rng.shuffle(bucket)
-    ordered: list[PromptRecord] = []
-    queues = [list(v) for _, v in sorted(by_stratum.items())]
-    while any(queues):
-        for queue in queues:
-            if queue:
-                ordered.append(queue.pop(0))
+    ordered = _interleave(by_stratum, config.prompts.category_weights)
 
     global_use: Counter[str] = Counter()
     stratum_use: Counter[tuple[str, str]] = Counter()
@@ -271,6 +309,8 @@ def build_plan(config: CollectionConfig, prompts: list[PromptRecord], catalog: C
         stratum = _length_stratum(prompt, thresholds)
         by_target: dict[str, list[tuple[RunConfiguration, LLMRequest]]] = defaultdict(list)
         for cfg in configs:
+            if not cfg.applies_to(prompt.category):
+                continue
             caps = catalog.capabilities(cfg.provider, cfg.model)
             request = build_request(prompt, cfg)
             problems = caps.unsupported_settings(request)

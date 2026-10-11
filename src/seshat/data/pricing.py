@@ -201,6 +201,11 @@ def compute_cost(family: str, entry: PriceEntry | None, usage: NormalizedUsage) 
     return CostResult(cost.quantize(Decimal("0.000000000001")), rates, entry, dims)
 
 
+# Margin on (possibly approximate) preflight input counts when deciding whether a
+# long-context price tier could apply to a request.
+LONG_CONTEXT_SAFETY_FACTOR = Decimal("1.25")
+
+
 def max_cost_estimate(
     family: str,
     entry: PriceEntry,
@@ -214,9 +219,16 @@ def max_cost_estimate(
     Assumes every input token is billed at the most expensive input-side rate that
     could apply (uncached, or cache write when caching is enabled) and that the model
     generates ``max_output_tokens``, under the long-context tier if it could apply.
+
+    Every documented long-context basis counts input-side tokens only, so the tier
+    can apply only if the input could exceed the threshold. ``input_tokens`` may be
+    an approximation, hence the :data:`LONG_CONTEXT_SAFETY_FACTOR` margin.
     """
     candidates = [entry.rates]
-    if entry.long_context_rates is not None:
+    if entry.long_context_rates is not None and (
+        entry.long_context_threshold is None
+        or input_tokens * LONG_CONTEXT_SAFETY_FACTOR > entry.long_context_threshold
+    ):
         candidates.append(entry.long_context_rates)
     worst = Decimal(0)
     for rates in candidates:
