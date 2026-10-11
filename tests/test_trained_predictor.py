@@ -22,11 +22,13 @@ def test_rejects_insufficient_verified_real_observations(tmp_path) -> None:
     source = tmp_path / "dataset"
     source.mkdir()
     (source / "manifest.json").write_text(
-        json.dumps({
-            "label_origin": "real",
-            "source_types": ["controlled_experiment"],
-            "dataset_version": "0.2.0",
-        })
+        json.dumps(
+            {
+                "label_origin": "real",
+                "source_types": ["controlled_experiment"],
+                "dataset_version": "0.2.0",
+            }
+        )
     )
     row = {
         "label_origin": "real",
