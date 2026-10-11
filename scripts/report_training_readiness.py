@@ -10,8 +10,6 @@ import json
 from pathlib import Path
 from typing import Any
 
-import pandas as pd
-
 from seshat.data.io import read_parquet
 from seshat.data.storage import StorageLayout
 
@@ -31,7 +29,10 @@ def readiness(root: str | Path) -> dict[str, Any]:
     if observations.empty or not decisions_path.exists():
         return result
     decisions = read_parquet(decisions_path)
-    valid = decisions.loc[decisions["eligible_for_training"] & (decisions["data_origin"] == "real"), ["observation_id"]]
+    valid = decisions.loc[
+        decisions["eligible_for_training"] & (decisions["data_origin"] == "real"),
+        ["observation_id"],
+    ]
     eligible = observations.merge(valid, on="observation_id", how="inner")
     eligible = eligible.loc[
         (eligible["source_type"] == "controlled_experiment")
