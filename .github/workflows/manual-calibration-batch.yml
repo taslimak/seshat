@@ -13,7 +13,7 @@ on:
         type: string
         required: true
       approve_paid_call:
-        description: "Approve up to 40 requests, estimated batch cap $0.75"
+        description: "Approve up to 180 requests, estimated batch cap $2.00"
         type: boolean
         default: false
         required: true
@@ -63,10 +63,10 @@ jobs:
             --run-id "${{ github.run_id }}" --output data/calibration.yml
       - name: Cost estimate (no API dispatch)
         run: python -m seshat.data.cli collect --config data/calibration.yml --dry-run
-      - name: Authorized real collection (40 requests max, estimated $0.75 cap)
+      - name: Authorized real collection (budget-limited, up to 180 calls, $2 estimated cap)
         run: |
           python -m seshat.data.cli collect --config data/calibration.yml \
-            --execute-live --max-cost-usd 0.75
+            --execute-live --max-cost-usd 2.00
       - name: Validate and export
         if: always()
         run: |
