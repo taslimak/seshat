@@ -59,7 +59,7 @@ def _eligible(frame: pd.DataFrame) -> pd.DataFrame:
 
 def _predict(model: Pipeline, frame: pd.DataFrame) -> np.ndarray:
     log_values: np.ndarray = model.predict(_features(frame))
-    return np.maximum(0, np.expm1(np.clip(log_values, 0, 16)))
+    return np.asarray(np.maximum(0, np.expm1(np.clip(log_values, 0, 16))))
 
 
 def train_from_dataset(dataset_dir: str | Path, output_dir: str | Path) -> dict[str, Any]:
