@@ -1,11 +1,12 @@
 """FastAPI entrypoint for Seshat."""
 
+import os
 from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 
-from seshat.predictor import BaselinePredictor
+from seshat.predictor import BaselinePredictor, TrainedPredictor
 from seshat.schemas import PredictionRequest, PredictionResponse
 
 app = FastAPI(
@@ -14,7 +15,9 @@ app = FastAPI(
     description="Predict likely output-token usage before an AI request is executed.",
 )
 
-predictor = BaselinePredictor()
+# Trained loading is opt-in; the existing baseline remains the default.
+_model_file = os.environ.get("SESHAT_MODEL_ARTIFACT")
+predictor = TrainedPredictor(_model_file) if _model_file else BaselinePredictor()
 _UI_PATH = Path(__file__).with_name("static") / "index.html"
 
 
