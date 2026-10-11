@@ -80,11 +80,15 @@ class TrainedPredictor:
         from seshat.train_predictor import _features
 
         features = extract_prompt_features(prompt)
-        frame = pd.DataFrame([{
-            "prompt_word_count": features.word_count,
-            "requested_model": model,
-            "requested_effort": None if effort == "auto" else effort,
-        }])
+        frame = pd.DataFrame(
+            [
+                {
+                    "prompt_word_count": features.word_count,
+                    "requested_model": model,
+                    "requested_effort": None if effort == "auto" else effort,
+                }
+            ]
+        )
         prediction = float(self._model.predict(_features(frame))[0])
         point = max(0, round(math.expm1(min(max(prediction, 0), 16))))
         radius = math.ceil(self._radius)
