@@ -28,7 +28,7 @@ def campaign_config(*, provider: str, model: str, run_id: str, root: str) -> dic
     config["seed"] = seed
     config["description"] = "Distinct manual calibration batch; not auto-trained"
     config["prompts"] = {
-        "generate": {"count": 160, "seed": seed},
+        "generate": {"count": 600, "seed": seed},
         "bank_files": [],
         "require_approved_for_live": True,
     }
@@ -41,7 +41,7 @@ def campaign_config(*, provider: str, model: str, run_id: str, root: str) -> dic
         }
     ]
     config["sampling"] = {"configs_per_prompt": 1}
-    config["budget"] = {"max_requests": 40, "max_cost_usd": "0.75"}
+    config["budget"] = {"max_requests": 180, "max_cost_usd": "2.00"}
     config["execution"] = {
         "concurrency": 1,
         "per_provider_concurrency": 1,
