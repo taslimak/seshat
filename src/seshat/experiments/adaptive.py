@@ -206,6 +206,36 @@ def _input_tokens_by_category(prompts: list[Any]) -> dict[str, float]:
     return {k: float(np.mean(v)) for k, v in totals.items()}
 
 
+def _value(row: dict[Any, Any], key: str, default: float) -> float:
+    raw = row.get(key)
+    return default if raw is None or pd.isna(raw) else float(raw)
+
+
+def quality_priority(
+    segment_quality: pd.DataFrame | None,
+) -> tuple[dict[str, float], dict[str, dict[str, Any]]]:
+    """Per-category collection weights from realized forecast-error statistics."""
+    if segment_quality is None or segment_quality.empty:
+        return {}, {}
+    weights: dict[str, float] = {}
+    inputs: dict[str, dict[str, Any]] = {}
+    for row in segment_quality.to_dict("records"):
+        wape = _value(row, "realized_wape_pct", 100.0)
+        coverage = _value(row, "realized_coverage_pct", 90.0)
+        catastrophic = _value(row, "catastrophic_rate_pct", 0.0)
+        weight = 1.0 + min(wape, 200.0) / 100.0 + max(0.0, 90.0 - coverage) / 50.0
+        weight += catastrophic / 100.0
+        category = str(row["prompt_category"])
+        weights[category] = round(weight, 3)
+        inputs[category] = {
+            "n": int(_value(row, "n", 0.0)),
+            "realized_wape_pct": wape,
+            "realized_coverage_pct": coverage,
+            "catastrophic_rate_pct": catastrophic,
+        }
+    return weights, inputs
+
+
 def plan_next_batch(
     *,
     store_root: str | Path | None,
@@ -227,6 +257,7 @@ def plan_next_batch(
     allow_over_budget: bool = False,
     pricing_dir: str | Path | None = None,
     on: date | None = None,
+    segment_quality: pd.DataFrame | None = None,
 ) -> dict[str, Any]:
     """Return ``{"config": <collector config>, "report": <dry-run report>}``."""
     from seshat.data.generators import generate_prompts
@@ -298,6 +329,13 @@ def plan_next_batch(
             reasons=reasons,
         )
 
+    # Forecast-quality priority: segments the active predictor gets wrong (high error,
+    # under-coverage, catastrophic misses) are worth more new labels per dollar.
+    priority, quality_inputs = quality_priority(segment_quality)
+    for name, plan in plans.items():
+        if name in priority:
+            plan.reasons.append(f"forecast-quality priority x{priority[name]:.2f}")
+
     # Greedy allocation: maximise sum log(1 + usable) per expected dollar.
     overhead = 1.0 + repetition_fraction * max(repetition_count - 1, 0)
     target_spend = float(budget_usd) * fill_fraction
@@ -326,7 +364,7 @@ def plan_next_batch(
             p_usable = 1.0 - plan.predicted_censor_rate
             current = plan.observed_usable + plan.allocated_requests * p_usable
             gain = math.log1p(current + p_usable) - math.log1p(current)
-            score = gain / unit_cost(plan) ** cost_exponent
+            score = priority.get(name, 1.0) * gain / unit_cost(plan) ** cost_exponent
             if best is None or score > best[0]:
                 best = (score, name)
         if best is None:
@@ -473,6 +511,12 @@ def plan_next_batch(
         else None,
         "categories": {name: asdict(plan) for name, plan in sorted(plans.items())},
         "store_observations_used": int(len(observed)),
+        "forecast_quality_priority": {
+            "weights": priority,
+            "inputs": quality_inputs,
+            "formula": "1 + min(realized WAPE, 200%)/100 + max(0, 90 - coverage)/50 "
+            "+ catastrophic(>100%) rate/100; multiplies the information gain per dollar",
+        },
         "approval_required": (
             "Paid API calls. Requires explicit approval and a manual workflow dispatch with "
             "approve_paid_call=true. No request has been sent."

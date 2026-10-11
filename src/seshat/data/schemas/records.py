@@ -311,6 +311,25 @@ class PredictionRecord(_Record):
     upper_bound: int = Field(ge=0)
     confidence: float = Field(ge=0.0, le=1.0)
     interval_calibrated: bool = False
+    # Forecast-quality lineage (optional; absent on records written before 2026-10-11).
+    prediction_mode: str | None = None
+    evaluation_role: str | None = None
+    base_predicted_output_tokens: int | None = Field(default=None, ge=0)
+    confidence_level: float | None = Field(default=None, gt=0.0, lt=1.0)
+    lower_margin_tokens: int | None = Field(default=None, ge=0)
+    upper_margin_tokens: int | None = Field(default=None, ge=0)
+    confidence_margin_tokens: int | None = Field(default=None, ge=0)
+    lower_margin_pct: float | None = None
+    upper_margin_pct: float | None = None
+    confidence_margin_pct: float | None = None
+    predicted_reasoning_tokens: int | None = Field(default=None, ge=0)
+    predicted_total_tokens: int | None = Field(default=None, ge=0)
+    predicted_cost_usd: Decimal | None = Field(default=None, ge=0)
+    uncertainty_model_version: str | None = None
+    calibration_version: str | None = None
+    dataset_version: str | None = None
+    feature_set_version: str | None = None
+    code_revision: str | None = None
 
     @model_validator(mode="after")
     def _bounds(self) -> PredictionRecord:

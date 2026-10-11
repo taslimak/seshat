@@ -1,12 +1,13 @@
 """FastAPI entrypoint for Seshat."""
 
 import os
+from dataclasses import asdict
 from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 
-from seshat.predictor import BaselinePredictor, TrainedPredictor
+from seshat.predictor import BaselinePredictor, CalibratedPredictor, TrainedPredictor
 from seshat.schemas import PredictionRequest, PredictionResponse
 
 app = FastAPI(
@@ -15,9 +16,17 @@ app = FastAPI(
     description="Predict likely output-token usage before an AI request is executed.",
 )
 
-# Trained loading is opt-in; the existing baseline remains the default.
+# Trained models are opt-in (operator-controlled paths); the baseline remains the default
+# until a forecaster passes its promotion gates and is explicitly activated.
+_forecaster_file = os.environ.get("SESHAT_FORECASTER_ARTIFACT")
 _model_file = os.environ.get("SESHAT_MODEL_ARTIFACT")
-predictor = TrainedPredictor(_model_file) if _model_file else BaselinePredictor()
+predictor: BaselinePredictor | TrainedPredictor | CalibratedPredictor
+if _forecaster_file:
+    predictor = CalibratedPredictor(_forecaster_file)
+elif _model_file:
+    predictor = TrainedPredictor(_model_file)
+else:
+    predictor = BaselinePredictor()
 _UI_PATH = Path(__file__).with_name("static") / "index.html"
 
 
@@ -33,15 +42,23 @@ def health() -> dict[str, str]:
 
 @app.post("/v1/predict", response_model=PredictionResponse)
 def predict(request: PredictionRequest) -> PredictionResponse:
-    result = predictor.predict(
-        prompt=request.prompt,
-        model=request.model,
-        effort=request.effort,
-    )
+    if isinstance(predictor, CalibratedPredictor):
+        result = predictor.predict(
+            request.prompt,
+            request.model,
+            request.effort,
+            max_output_tokens=request.max_output_tokens,
+            system=request.system,
+        )
+    else:
+        result = predictor.predict(
+            prompt=request.prompt,
+            model=request.model,
+            effort=request.effort,
+        )
+    fields = asdict(result)
     return PredictionResponse(
-        predicted_output_tokens=result.predicted_output_tokens,
-        lower_bound=result.lower_bound,
-        upper_bound=result.upper_bound,
-        confidence=result.confidence,
-        predictor_version=result.predictor_version,
+        **fields,
+        prediction_interval_lower=result.lower_bound,
+        prediction_interval_upper=result.upper_bound,
     )

@@ -45,6 +45,14 @@ def _decimal(value: str) -> Decimal:
     return result
 
 
+def _newest_predictor(store: str) -> str | None:
+    ledger = Path(store) / "quality" / "model_evaluations.jsonl"
+    if not ledger.exists():
+        return None
+    lines = [line for line in ledger.read_text(encoding="utf-8").splitlines() if line.strip()]
+    return str(json.loads(lines[-1])["predictor_version"]) if lines else None
+
+
 def _key_value(item: str) -> tuple[str, str]:
     key, sep, value = item.partition("=")
     if not sep or not key:
@@ -265,8 +273,28 @@ def _parser() -> argparse.ArgumentParser:
         default=Decimal("10.00"),
         help="Refuse if store month-to-date estimated spend + budget exceeds this",
     )
+    plan.add_argument(
+        "--quality-predictor",
+        help="Weight categories by this predictor's realized errors (default: newest registered "
+        "forecaster, else the baseline)",
+    )
     plan.add_argument("--output", required=True, help="Collector config to write (YAML)")
     plan.add_argument("--report", help="Dry-run report path (Markdown; JSON alongside)")
+
+    tf = sub.add_parser(
+        "train-forecaster",
+        help="Train/calibrate/evaluate forecasters on a store (protected test; no deployment)",
+    )
+    tf.add_argument("--root", required=True)
+    tf.add_argument("--output-dir", required=True)
+    tf.add_argument("--confidence-level", type=float, default=0.90)
+    tf.add_argument("--register", action="store_true", help="Store artifact + backtests in --root")
+
+    qr = sub.add_parser(
+        "quality-refresh",
+        help="Rebuild prediction outcomes, quality snapshots, drift and run reports",
+    )
+    qr.add_argument("--root", required=True)
     return parser
 
 
@@ -622,6 +650,15 @@ def _dispatch(args: argparse.Namespace) -> int:
                     f"Month-to-date estimated spend ${spent} + batch budget ${args.budget_usd} "
                     f"exceeds the monthly target ${args.monthly_target_usd} for {month}"
                 )
+        segment_quality = None
+        if args.store:
+            from seshat.quality.outcomes import read_outcomes
+            from seshat.quality.snapshots import segment_quality as _segment_quality
+
+            outcomes = read_outcomes(args.store)
+            if not outcomes.empty:
+                version = args.quality_predictor or _newest_predictor(args.store) or "baseline-0.1"
+                segment_quality = _segment_quality(outcomes, version)
         batch = plan_next_batch(
             store_root=args.store,
             provider=args.provider,
@@ -632,6 +669,7 @@ def _dispatch(args: argparse.Namespace) -> int:
             seed=args.seed,
             prompt_pool_size=args.pool_size,
             max_censor_rate=args.max_censor_rate,
+            segment_quality=segment_quality,
         )
         CollectionConfig.model_validate(batch["config"])  # fail before writing
         output = Path(args.output)
@@ -658,6 +696,40 @@ def _dispatch(args: argparse.Namespace) -> int:
             "approval_required",
         )
         _print({k: batch["report"][k] for k in summary_keys} | {"config": str(output)})
+        return 0
+
+    if args.command == "train-forecaster":
+        from seshat.modeling.pipeline import train_and_evaluate
+
+        evaluation = train_and_evaluate(
+            args.root, args.output_dir, confidence_level=args.confidence_level
+        )
+        trained: dict[str, Any] = {
+            k: evaluation[k]
+            for k in (
+                "predictor_version",
+                "uncertainty_model_version",
+                "calibration_version",
+                "dataset_version",
+                "counts",
+            )
+        }
+        trained["selected"] = evaluation["selection"]["chosen"]
+        trained["promotion"] = evaluation["promotion"]["decision"]
+        trained["failed_checks"] = [
+            k for k, v in evaluation["promotion"]["checks"].items() if v is not True
+        ]
+        if args.register:
+            from seshat.quality.refresh import register_model
+
+            trained["registered"] = register_model(args.root, args.output_dir)
+        _print(trained)
+        return 0
+
+    if args.command == "quality-refresh":
+        from seshat.quality.refresh import refresh_quality
+
+        _print(refresh_quality(args.root))
         return 0
 
     raise AssertionError(f"unhandled command {args.command}")

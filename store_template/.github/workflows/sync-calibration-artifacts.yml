@@ -77,6 +77,24 @@ jobs:
           python scripts/sync_calibration_artifacts.py --store ../store \
             ${RUN_IDS:+--run-ids $RUN_IDS} | tee ../sync_summary.json
 
+      - name: Forecast-quality loop (outcomes, snapshots, drift, run reports)
+        working-directory: seshat
+        run: python -m seshat.data.cli quality-refresh --root ../store | tee ../quality_summary.json
+
+      - name: Train and register a challenger when justified (never activates it)
+        working-directory: seshat
+        shell: bash
+        run: |
+          set -euo pipefail
+          due=$(python -c "import json;print(json.load(open('../store/quality/summary.json')).get('retraining',{}).get('due', False))")
+          if [ "$due" = "True" ]; then
+            python -m seshat.data.cli train-forecaster --root ../store \
+              --output-dir ../challenger --register | tee ../challenger_summary.json
+            python -m seshat.data.cli quality-refresh --root ../store > /dev/null
+          else
+            echo "No retraining: not enough new evidence"
+          fi
+
       - name: Commit and push
         shell: bash
         run: |
@@ -88,7 +106,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "Store unchanged"; exit 0
           fi
-          git commit -q -m "Sync calibration artifacts (seshat@${{ steps.ref.outputs.ref }})" \
+          git commit -q -m "Sync artifacts + forecast quality (seshat@${{ steps.ref.outputs.ref }})" \
             -m "Sync run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           git push -q
 
@@ -98,5 +116,7 @@ jobs:
         run: |
           {
             echo '```json'; cat sync_summary.json 2>/dev/null || true; echo '```'
+            echo '```json'; cat store/quality/summary.json 2>/dev/null || true; echo '```'
+            echo '```json'; cat challenger_summary.json 2>/dev/null || true; echo '```'
             cat store/reports/training_readiness.md 2>/dev/null || true
           } >> "$GITHUB_STEP_SUMMARY"
