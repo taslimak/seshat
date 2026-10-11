@@ -20,7 +20,7 @@ def test_campaign_is_bounded_and_rotated() -> None:
 
 
 def test_refuses_unverified_model_and_malformed_run_id() -> None:
-    with pytest.raises(ValueError, match="Unverified"):
+    with pytest.raises(ValueError, match="not in the catalog"):
         campaign_config(provider="openai", model="unknown", run_id="123", root="/tmp/seshat")
     with pytest.raises(ValueError, match="numeric"):
         campaign_config(
