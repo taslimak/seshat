@@ -1,5 +1,9 @@
 """Safe configuration generation for the calibration campaign."""
 
+import subprocess
+import sys
+from pathlib import Path
+
 import pytest
 
 from scripts.prepare_calibration_campaign import campaign_config
@@ -26,3 +30,15 @@ def test_refuses_unverified_model_and_malformed_run_id() -> None:
         campaign_config(
             provider="openai", model="gpt-6.1-sol", run_id="../../bad", root="/tmp/seshat"
         )
+
+
+def test_workflow_runs_campaign_as_importable_module() -> None:
+    workflow = Path(".github/workflows/manual-calibration-batch.yml").read_text()
+    assert "python -m scripts.prepare_calibration_campaign" in workflow
+    result = subprocess.run(
+        [sys.executable, "-m", "scripts.prepare_calibration_campaign", "--help"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
