@@ -12,21 +12,21 @@ consolidated into one long-lived **store**.
 | Medium | A **private** GitHub repository (e.g. `taslimak/seshat-data`) holding the store as plain files | Free, versioned (every import is a commit), access-controlled, no new paid infrastructure. A batch adds ~0.3–0.5 MB including the original ZIP. |
 | Not the main repo | `taslimak/seshat` is **public**; `raw/*/plan.jsonl` contains the exact request messages | Prompt text must not be published. (Note: artifacts and job logs of a public repo are already visible to signed-in GitHub users; keep secrets and private prompts out of them.) |
 | Unit of truth | The raw layer: `plan.jsonl`, `events.jsonl` (with raw provider usage), run logs, the original artifact ZIP | Normalized Parquet is rebuilt from raw on every import, so it is a deterministic function of the raw layer. |
-| Writer | `.github/workflows/consolidate-artifacts.yml` (free; no provider calls) | Runs automatically after each successful *Manual calibration data batch* and on demand for older run IDs. |
+| Writer | A workflow **inside the store repository** (`store_template/.github/workflows/sync-calibration-artifacts.yml`) | Reads the public `taslimak/seshat` runs and artifacts and commits to its own repo with the built-in `GITHUB_TOKEN`: no personal access token, no cross-repo secret, no provider calls, no spend (it uses ~2–3 private-repo Actions minutes per sync from the free allowance). |
 
-## One-time setup (owner)
+## Setup
 
-1. Create a **private** repository, e.g. `taslimak/seshat-data` (empty is fine).
-2. Create a fine-grained personal access token restricted to that one
-   repository with **Contents: Read and write** (Metadata: Read is implied).
-3. In `taslimak/seshat` → Settings → Secrets and variables → Actions:
-   * secret `SESHAT_DATA_STORE_TOKEN` = the token;
-   * variable `SESHAT_DATA_STORE_REPO` = `taslimak/seshat-data`.
-4. Run **Consolidate calibration artifacts** manually with
-   `run_ids = 38106728852` **before 2026-11-10**.
+1. Create an empty **private** repository `taslimak/seshat-data` (with a README).
+2. Copy `store_template/` into it (`README.md`, `SESHAT_REF`, the workflow).
+   `SESHAT_REF` pins the Seshat branch/commit used for consolidation (`main`
+   once this code is merged).
+3. Pushing the workflow triggers the first sync. Afterwards it runs every
+   6 hours, on pushes to `SESHAT_REF`/`SYNC_REQUEST`, and on manual dispatch
+   (optionally with specific run IDs). Each sync imports every successful
+   calibration run's artifact not yet in the ledger and warns about expired
+   ones.
 
-Until steps 1–3 are done the workflow exits successfully with a notice and
-imports nothing. The workflow refuses to write to a public store repository.
+The workflow refuses to run if the store repository is public.
 
 ## What an import guarantees
 
@@ -63,6 +63,8 @@ invoices) and `training_readiness.{json,md}`.
 
 ```bash
 git clone https://github.com/taslimak/seshat-data store          # private
+python scripts/sync_calibration_artifacts.py --store store        # needs gh auth
+# or, from a downloaded ZIP:
 seshat-data consolidate --store store \
   --source ~/Downloads/seshat-calibration-38106728852.zip \
   --meta github_run_id=38106728852 --meta artifact_id=11690398729

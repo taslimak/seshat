@@ -1,0 +1,102 @@
+name: Sync calibration artifacts
+
+# Lives in the PRIVATE store repository. Imports seshat-calibration-* artifacts
+# from the public taslimak/seshat repository into this store and commits them.
+# Uses only the built-in GITHUB_TOKEN: no personal access token, no secrets,
+# no provider API calls, no spend. (Private-repo Actions minutes count against
+# the account's free allowance; a sync takes ~2-3 minutes.)
+
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/sync-calibration-artifacts.yml", "SESHAT_REF", "SYNC_REQUEST"]
+  schedule:
+    - cron: "41 */6 * * *"
+  workflow_dispatch:
+    inputs:
+      run_ids:
+        description: "Optional space-separated taslimak/seshat run IDs (default: recent successful calibration runs)"
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: seshat-store-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SOURCE_REPO: taslimak/seshat
+      RUN_IDS: ${{ inputs.run_ids }}
+    steps:
+      - name: Refuse to run in a public repository
+        if: ${{ !github.event.repository.private }}
+        run: |
+          echo "This store holds request messages; the repository must be private."
+          exit 1
+
+      - uses: actions/checkout@v4
+        with:
+          path: store
+
+      - name: Resolve Seshat code revision
+        id: ref
+        shell: bash
+        run: echo "ref=$(tr -d '[:space:]' < store/SESHAT_REF)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          repository: taslimak/seshat
+          ref: ${{ steps.ref.outputs.ref }}
+          path: seshat
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Seshat
+        run: python -m pip install -e "./seshat[data]"
+
+      - name: Import new artifacts
+        working-directory: seshat
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for id in $RUN_IDS; do
+            case "$id" in (*[!0-9]*) echo "Invalid run id: $id"; exit 1 ;; esac
+          done
+          python scripts/sync_calibration_artifacts.py --store ../store \
+            ${RUN_IDS:+--run-ids $RUN_IDS} | tee ../sync_summary.json
+
+      - name: Commit and push
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd store
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Store unchanged"; exit 0
+          fi
+          git commit -q -m "Sync calibration artifacts (seshat@${{ steps.ref.outputs.ref }})" \
+            -m "Sync run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          git push -q
+
+      - name: Summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo '```json'; cat sync_summary.json 2>/dev/null || true; echo '```'
+            cat store/reports/training_readiness.md 2>/dev/null || true
+          } >> "$GITHUB_STEP_SUMMARY"

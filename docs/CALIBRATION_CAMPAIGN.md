@@ -74,5 +74,5 @@ this with experimental design rather than volume:
    `configs/experiments/batches/`, provider/model mismatches, unverified models,
    caps above $2.00 and prompt/response text retention, and appends the run id
    to `experiment_id` so a re-dispatch never resumes another run's samples.
-5. The consolidation workflow imports the artifact into the store and refreshes
-   readiness, quality and spend reports.
+5. The store repository's sync workflow (every 6 h, or dispatched) imports the
+   artifact and refreshes readiness, quality and spend reports.
