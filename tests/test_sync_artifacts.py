@@ -31,7 +31,7 @@ def fake_github(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict[str, An
 
     def fake_json(path: str) -> Any:
         if "/workflows/" in path:
-            return {"workflow_runs": [{"id": 111}]}
+            return {"workflow_runs": [{"id": 111, "conclusion": "success"}]}
         return {
             "artifacts": [
                 {
@@ -79,3 +79,39 @@ def test_expired_artifacts_are_reported(tmp_path: Path, fake_github: dict[str, A
     summary = sync_mod.sync(tmp_path / "store", "taslimak/seshat", [111])
     assert summary["expired"][0]["artifact_id"] == "999"
     assert not (tmp_path / "store" / "STORE.json").exists()
+
+
+def test_cancelled_runs_are_listed_and_empty_artifacts_recorded_once(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runs = {
+        "workflow_runs": [
+            {"id": 1, "conclusion": "success"},
+            {"id": 2, "conclusion": "cancelled"},
+            {"id": 3, "conclusion": "failure"},
+            {"id": 4, "conclusion": "skipped"},
+        ]
+    }
+    monkeypatch.setattr(sync_mod, "_gh_json", lambda path: runs)
+    assert sync_mod.completed_runs("o/r", 10) == [1, 2, 3]
+
+    empty = tmp_path / "empty.zip"
+    with zipfile.ZipFile(empty, "w") as bundle:
+        bundle.writestr("calibration_stats.json", "{}")
+    calls = {"n": 0}
+
+    def fake_json(path: str) -> Any:
+        return {"artifacts": [{"id": 7, "name": "seshat-calibration-3", "expired": False}]}
+
+    def fake_download(repo: str, artifact_id: int, target: Path) -> str:
+        calls["n"] += 1
+        shutil.copyfile(empty, target)
+        return "sha256:x"
+
+    monkeypatch.setattr(sync_mod, "_gh_json", fake_json)
+    monkeypatch.setattr(sync_mod, "download", fake_download)
+    store = tmp_path / "store"
+    first = sync_mod.sync(store, "o/r", [3])
+    assert first["empty"][0]["artifact_id"] == "7" and first["imported"] == []
+    second = sync_mod.sync(store, "o/r", [3])
+    assert second["skipped"] == ["7"] and calls["n"] == 1

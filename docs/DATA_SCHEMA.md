@@ -207,6 +207,24 @@ Seshat predictions. Never observations or labels.
 | `upper_bound` | `upper_bound` | `int64` | Upper interval bound. |
 | `confidence` | `confidence` | `double` | Predictor-reported confidence (not calibrated unless interval_calibrated). |
 | `interval_calibrated` | `interval_calibrated` | `bool` | Whether the interval was empirically calibrated. |
+| `prediction_mode` | `prediction_mode` | `string` | preflight (before dispatch) \| backtest_holdout \| backtest_out_of_fold \| retrospective (stored request re-scored; in-sample unless stated). |
+| `evaluation_role` | `evaluation_role` | `string` | protected_test \| cross_validation \| none: how the row may be used in quality reporting. |
+| `base_predicted_output_tokens` | `base_predicted_output_tokens` | `int64` | Point forecast before bias correction (stage A). |
+| `confidence_level` | `confidence_level` | `double` | Nominal coverage targeted by the calibrated interval (e.g. 0.90). Not a probability that the point forecast is right. |
+| `lower_margin_tokens` | `lower_margin_tokens` | `int64` | Point forecast minus interval lower bound. |
+| `upper_margin_tokens` | `upper_margin_tokens` | `int64` | Interval upper bound minus point forecast. |
+| `confidence_margin_tokens` | `confidence_margin_tokens` | `int64` | Display margin: max(lower, upper margin), so point +/- margin covers the calibrated interval. |
+| `lower_margin_pct` | `lower_margin_pct` | `double` | lower_margin_tokens as % of the point forecast. |
+| `upper_margin_pct` | `upper_margin_pct` | `double` | upper_margin_tokens as % of the point forecast. |
+| `confidence_margin_pct` | `confidence_margin_pct` | `double` | confidence_margin_tokens as % of the point forecast. |
+| `predicted_reasoning_tokens` | `predicted_reasoning_tokens` | `int64` | Forecast reasoning tokens, when the predictor models them. |
+| `predicted_total_tokens` | `predicted_total_tokens` | `int64` | Forecast realized total tokens: preflight input + min(output forecast, max_output_tokens). |
+| `predicted_cost_usd` | `predicted_cost_usd` | `decimal128(24, 12)` | Price-table cost of the forecast realized usage. Not an invoice. |
+| `uncertainty_model_version` | `uncertainty_model_version` | `string` | Version of the residual/scale model behind the interval. |
+| `calibration_version` | `calibration_version` | `string` | Version of the bias-correction + conformal calibration layer. |
+| `dataset_version` | `dataset_version` | `string` | Dataset the predictor was trained on (hash of observation ids). |
+| `feature_set_version` | `feature_set_version` | `string` | Model feature definition version. |
+| `code_revision` | `code_revision` | `string` | Git commit that produced the prediction. |
 
 ## Normalized usage
 

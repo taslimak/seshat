@@ -23,6 +23,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import zipfile
 from pathlib import Path
 from typing import Any
 
@@ -42,11 +43,28 @@ def _gh_json(path: str) -> Any:
     return json.loads(out)
 
 
-def successful_runs(repo: str, limit: int) -> list[int]:
+# Paid requests may have been made before a run was cancelled, failed or timed out;
+# their artifacts hold real observations and must be imported too.
+IMPORTABLE_CONCLUSIONS = frozenset({"success", "cancelled", "failure", "timed_out"})
+EMPTY_LEDGER = Path("_provenance") / "empty_artifacts.jsonl"
+
+
+def completed_runs(repo: str, limit: int) -> list[int]:
     data = _gh_json(
-        f"repos/{repo}/actions/workflows/{WORKFLOW_FILE}/runs?status=success&per_page={limit}"
+        f"repos/{repo}/actions/workflows/{WORKFLOW_FILE}/runs?status=completed&per_page={limit}"
     )
-    return [int(run["id"]) for run in data.get("workflow_runs", [])]
+    return [
+        int(run["id"])
+        for run in data.get("workflow_runs", [])
+        if run.get("conclusion") in IMPORTABLE_CONCLUSIONS
+    ]
+
+
+def _record_empty(store: Path, record: dict[str, Any]) -> None:
+    path = store / EMPTY_LEDGER
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(record, sort_keys=True) + "\n")
 
 
 def run_artifacts(repo: str, run_id: int) -> list[dict[str, Any]]:
@@ -55,13 +73,28 @@ def run_artifacts(repo: str, run_id: int) -> list[dict[str, Any]]:
 
 
 def imported_artifact_ids(store: Path) -> set[str]:
-    if not (store / "STORE.json").exists():
-        return set()
-    return {
-        str(entry.get("metadata", {}).get("artifact_id"))
-        for entry in DataStore(store).ledger()
-        if entry.get("metadata", {}).get("artifact_id")
-    }
+    """Artifacts already imported, or known to contain no experiments."""
+    done: set[str] = set()
+    empty = store / EMPTY_LEDGER
+    if empty.exists():
+        done |= {
+            str(json.loads(line)["artifact_id"])
+            for line in empty.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        }
+    if (store / "STORE.json").exists():
+        done |= {
+            str(entry.get("metadata", {}).get("artifact_id"))
+            for entry in DataStore(store).ledger()
+            if entry.get("metadata", {}).get("artifact_id")
+        }
+    return done
+
+
+def _has_experiments(archive: Path) -> bool:
+    """True if the artifact holds at least one raw/<experiment>/plan.jsonl."""
+    with zipfile.ZipFile(archive) as bundle:
+        return any(name.endswith("/plan.jsonl") and "raw/" in name for name in bundle.namelist())
 
 
 def download(repo: str, artifact_id: int, target: Path) -> str:
@@ -75,9 +108,15 @@ def download(repo: str, artifact_id: int, target: Path) -> str:
 
 
 def sync(store: Path, repo: str, run_ids: list[int] | None, *, limit: int = 50) -> dict[str, Any]:
-    runs = run_ids or successful_runs(repo, limit)
+    runs = run_ids or completed_runs(repo, limit)
     done = imported_artifact_ids(store)
-    summary: dict[str, Any] = {"imported": [], "skipped": [], "expired": [], "runs": runs}
+    summary: dict[str, Any] = {
+        "imported": [],
+        "skipped": [],
+        "expired": [],
+        "empty": [],
+        "runs": runs,
+    }
     with tempfile.TemporaryDirectory(prefix="seshat-sync-") as tmp:
         for run_id in sorted(runs):
             for artifact in run_artifacts(repo, run_id):
@@ -95,6 +134,12 @@ def sync(store: Path, repo: str, run_ids: list[int] | None, *, limit: int = 50) 
                 expected = artifact.get("digest")
                 if expected and expected != actual:
                     raise ValueError(f"Digest mismatch for artifact {artifact_id}")
+                if not _has_experiments(zip_path):
+                    record = {"run_id": run_id, "artifact_id": artifact_id, "digest": actual}
+                    _record_empty(store, record)
+                    summary["empty"].append(record)
+                    done.add(artifact_id)
+                    continue
                 entry = consolidate(
                     zip_path,
                     store,

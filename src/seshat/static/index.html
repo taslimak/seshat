@@ -208,7 +208,9 @@ async function predict(){
 function renderSelected(r, model, effort){
   document.getElementById("total").innerHTML = pretty(r.predicted_output_tokens) + ' <span class="unit">tokens</span>';
   document.getElementById("range").textContent = "Prediction interval: " + pretty(r.lower_bound) + "–" + pretty(r.upper_bound);
-  document.getElementById("confidence").textContent = Math.round(r.confidence*100) + "% confidence";
+  document.getElementById("confidence").textContent = r.interval_calibrated && r.confidence_level
+    ? "±" + pretty(r.confidence_margin_tokens) + " (±" + Math.round(r.confidence_margin_pct) + "%) at " + Math.round(r.confidence_level*100) + "% level"
+    : "uncalibrated range";
   document.getElementById("lower").textContent = pretty(r.lower_bound);
   document.getElementById("upper").textContent = pretty(r.upper_bound);
   document.getElementById("chips").innerHTML = [

@@ -23,6 +23,8 @@ from seshat.providers.catalog import load_catalog
 
 BATCH_DIR = Path("configs/experiments/batches")
 MAX_RUN_COST_USD = Decimal("2.00")
+# Must finish well inside the workflow's timeout-minutes (120).
+MAX_PACED_MINUTES = 90
 
 
 def prepare(
@@ -61,6 +63,16 @@ def prepare(
         raise ValueError(f"budget.max_cost_usd must be set and <= {MAX_RUN_COST_USD}")
     if config.privacy.store_prompt_text or config.privacy.store_response_text:
         raise ValueError("Paid batches must not store prompt or response text")
+    slowest = min(
+        (limit.requests_per_minute for limit in config.execution.rate_limits.values()),
+        default=None,
+    )
+    if slowest is not None and config.budget.max_requests / slowest > MAX_PACED_MINUTES:
+        raise ValueError(
+            f"{config.budget.max_requests} requests at {slowest}/min need "
+            f"{config.budget.max_requests / slowest:.0f} min, over the {MAX_PACED_MINUTES} min "
+            "the workflow allows; raise requests_per_minute or split the batch"
+        )
     if not run_id.isdecimal():
         raise ValueError("Expected a numeric GitHub run id")
     raw["experiment_id"] = f"{config.experiment_id}_r{run_id}"

@@ -34,7 +34,7 @@ jobs:
   campaign:
     if: ${{ inputs.approve_paid_call == true }}
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 120
     env:
       SESHAT_PROVIDER: ${{ inputs.provider }}
       SESHAT_MODEL: ${{ inputs.model }}

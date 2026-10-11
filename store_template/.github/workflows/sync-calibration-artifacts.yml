@@ -77,6 +77,38 @@ jobs:
           python scripts/sync_calibration_artifacts.py --store ../store \
             ${RUN_IDS:+--run-ids $RUN_IDS} | tee ../sync_summary.json
 
+      - name: Decide whether the quality loop needs to run
+        id: changed
+        shell: bash
+        run: |
+          # Scheduled syncs that imported nothing leave the store untouched (no churn).
+          imported=$(python -c "import json;d=json.load(open('sync_summary.json'));print(len(d.get('imported',[])))")
+          if [ "$imported" != "0" ] || [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Forecast-quality loop (outcomes, snapshots, drift, run reports)
+        if: steps.changed.outputs.run == 'true'
+        working-directory: seshat
+        run: python -m seshat.data.cli quality-refresh --root ../store | tee ../quality_summary.json
+
+      - name: Train and register a challenger when justified (never activates it)
+        if: steps.changed.outputs.run == 'true'
+        working-directory: seshat
+        shell: bash
+        run: |
+          set -euo pipefail
+          due=$(python -c "import json;print(json.load(open('../store/quality/summary.json')).get('retraining',{}).get('due', False))")
+          if [ "$due" = "True" ]; then
+            python -m seshat.data.cli train-forecaster --root ../store \
+              --output-dir ../challenger --register | tee ../challenger_summary.json
+            python -m seshat.data.cli quality-refresh --root ../store > /dev/null
+          else
+            echo "No retraining: not enough new evidence"
+          fi
+
       - name: Commit and push
         shell: bash
         run: |
@@ -88,7 +120,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "Store unchanged"; exit 0
           fi
-          git commit -q -m "Sync calibration artifacts (seshat@${{ steps.ref.outputs.ref }})" \
+          git commit -q -m "Sync artifacts + forecast quality (seshat@${{ steps.ref.outputs.ref }})" \
             -m "Sync run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           git push -q
 
@@ -98,5 +130,7 @@ jobs:
         run: |
           {
             echo '```json'; cat sync_summary.json 2>/dev/null || true; echo '```'
+            echo '```json'; cat store/quality/summary.json 2>/dev/null || true; echo '```'
+            echo '```json'; cat challenger_summary.json 2>/dev/null || true; echo '```'
             cat store/reports/training_readiness.md 2>/dev/null || true
           } >> "$GITHUB_STEP_SUMMARY"
