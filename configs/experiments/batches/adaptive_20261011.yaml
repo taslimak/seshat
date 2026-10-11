@@ -1,0 +1,101 @@
+experiment_id: adaptive_20261011
+description: Adaptive calibration batch (censoring-aware caps, weighted coverage)
+seed: 20261011
+prompts:
+  generate:
+    count: 1020
+    seed: 20261011
+  bank_files: []
+  category_weights:
+    classification: 33.0
+    code_generation: 8.0
+    code_review: 9.0
+    creative_writing: 9.0
+    debugging: 14.0
+    extraction: 17.0
+    long_context_analysis: 6.0
+    mathematics: 11.0
+    multi_turn: 24.0
+    question_answering: 10.0
+    reasoning: 9.0
+    short_answer: 33.0
+    structured_json: 17.0
+    summarization: 17.0
+    tool_calling: 33.0
+    translation: 11.0
+    verbose_explanation: 8.0
+  require_approved_for_live: true
+targets:
+- provider: openai
+  model: gpt-6.1-sol
+  efforts:
+  - low
+  - medium
+  - high
+  max_output_tokens:
+  - 512
+  categories:
+  - classification
+  - extraction
+  - multi_turn
+  - short_answer
+  - structured_json
+  - summarization
+  - tool_calling
+- provider: openai
+  model: gpt-6.1-sol
+  efforts:
+  - low
+  - medium
+  - high
+  max_output_tokens:
+  - 1024
+  categories:
+  - debugging
+  - question_answering
+  - reasoning
+- provider: openai
+  model: gpt-6.1-sol
+  efforts:
+  - low
+  - medium
+  - high
+  max_output_tokens:
+  - 2048
+  categories:
+  - long_context_analysis
+  - translation
+- provider: openai
+  model: gpt-6.1-sol
+  efforts:
+  - low
+  - medium
+  - high
+  max_output_tokens:
+  - 4096
+  categories:
+  - code_generation
+  - code_review
+  - creative_writing
+  - mathematics
+  - verbose_explanation
+sampling:
+  configs_per_prompt: 1
+repetitions:
+  fraction: 0.1
+  count: 2
+budget:
+  max_requests: 264
+  max_cost_usd: '2.00'
+execution:
+  concurrency: 1
+  per_provider_concurrency: 1
+  timeout_seconds: 180
+  max_retries: 0
+  preflight: approximate
+  rate_limits:
+    openai:
+      requests_per_minute: 5
+privacy:
+  store_prompt_text: false
+  store_response_text: false

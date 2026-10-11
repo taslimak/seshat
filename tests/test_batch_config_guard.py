@@ -94,3 +94,14 @@ def test_reasoning_prompts_are_not_one_family() -> None:
     assert len(families["reasoning"]) > 5
     assert len(families["mathematics"]) > 5
     assert len(families["classification"]) > 3
+
+
+def test_whitespace_is_tolerated_and_missing_files_are_explained(tracked: None) -> None:
+    with pytest.raises(ValueError, match="does not exist on this branch"):
+        use_batch_config.prepare(
+            "  configs/experiments/batches/_missing.yaml ",
+            provider="openai",
+            model="gpt-6.1-sol",
+            run_id="1",
+            data_root="data",
+        )

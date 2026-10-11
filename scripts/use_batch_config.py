@@ -28,10 +28,19 @@ MAX_RUN_COST_USD = Decimal("2.00")
 def prepare(
     config_path: str, *, provider: str, model: str, run_id: str, data_root: str
 ) -> dict[str, object]:
-    path = Path(config_path)
+    cleaned = config_path.strip().strip("'\"")
+    path = Path(cleaned)
     resolved = path.resolve()
     if BATCH_DIR.resolve() not in resolved.parents or path.suffix not in {".yaml", ".yml"}:
-        raise ValueError(f"Batch configs must be YAML files under {BATCH_DIR}/")
+        raise ValueError(
+            f"Batch configs must be YAML files under {BATCH_DIR}/ (received {config_path!r})"
+        )
+    if not path.is_file():
+        available = sorted(p.as_posix() for p in BATCH_DIR.glob("*.y*ml"))
+        raise ValueError(
+            f"{cleaned} does not exist on this branch (was its PR merged into main?). "
+            f"Available: {available or 'none'}"
+        )
     tracked = subprocess.run(
         ["git", "ls-files", "--error-unmatch", str(path)], capture_output=True, check=False
     )
