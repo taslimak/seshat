@@ -58,7 +58,7 @@ jobs:
         run: python -m pip install -e ".[data,providers]"
       - name: Build unique calibration batch
         run: |
-          python scripts/prepare_calibration_campaign.py \
+          python -m scripts.prepare_calibration_campaign \
             --provider "$SESHAT_PROVIDER" --model "$SESHAT_MODEL" \
             --run-id "${{ github.run_id }}" --output data/calibration.yml
       - name: Cost estimate (no API dispatch)
