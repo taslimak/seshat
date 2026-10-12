@@ -307,9 +307,10 @@ def plan_next_batch(
         expected_out = float(np.mean([fitted.expected_capped(cap, m) for m in multipliers]))
         reasons: list[str] = []
         if len(rows) and censored_mask.mean() > max_censor_rate:
+            binding = sorted({int(c) for c in rows.loc[censored_mask, "max_output_tokens"]})
             reasons.append(
-                f"observed censor rate {censored_mask.mean():.0%} at cap "
-                f"{int(rows['max_output_tokens'].max())} -> cap {cap}"
+                f"observed censor rate {censored_mask.mean():.0%} (truncated at cap "
+                f"{'/'.join(map(str, binding))}) -> cap {cap}"
             )
         if len(usable) == 0:
             reasons.append("no usable labels yet")
@@ -332,6 +333,17 @@ def plan_next_batch(
     # Forecast-quality priority: segments the active predictor gets wrong (high error,
     # under-coverage, catastrophic misses) are worth more new labels per dollar.
     priority, quality_inputs = quality_priority(segment_quality)
+    if priority:
+        # Realized error looks perfect where every response hit its cap (any forecast >= cap
+        # scores zero), so a category with no uncensored label is the least understood,
+        # not the best predicted: give it the highest observed priority.
+        top_priority = max(priority.values())
+        for name, plan in plans.items():
+            if plan.observed_usable == 0 and plan.observed_rows > 0:
+                priority[name] = top_priority
+                quality_inputs.setdefault(name, {})["override"] = (
+                    "no uncensored labels: realized error is uninformative"
+                )
     for name, plan in plans.items():
         if name in priority:
             plan.reasons.append(f"forecast-quality priority x{priority[name]:.2f}")
@@ -414,7 +426,9 @@ def plan_next_batch(
             "per_provider_concurrency": 4,
             "timeout_seconds": 180,
             "max_retries": 0,
-            "preflight": "approximate",
+            # Provider-native counts in live runs (dry runs fall back to the approximation
+            # without calling the provider).
+            "preflight": "native",
             "rate_limits": {provider: {"requests_per_minute": 30}},
         },
         "privacy": {"store_prompt_text": False, "store_response_text": False},

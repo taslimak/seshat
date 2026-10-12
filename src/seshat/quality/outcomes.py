@@ -32,7 +32,17 @@ from seshat.data.storage import StorageLayout
 from seshat.quality.metrics import METRICS_VERSION, add_row_metrics
 
 OUTCOMES_DIR = Path("quality") / "prediction_outcomes"
-OUT_OF_SAMPLE_MODES = {"preflight", "backtest_holdout", "backtest_out_of_fold"}
+OUT_OF_SAMPLE_MODES = {
+    "live_shadow_preflight",
+    "backtest_holdout",
+    "backtest_out_of_fold",
+}
+# Never pooled into one headline number.
+REGIMES = {
+    "live_shadow_preflight": "true_forward_shadow",
+    "backtest_out_of_fold": "out_of_fold_backtest",
+    "backtest_holdout": "protected_test",
+}
 UNTRAINED_PREFIXES = ("baseline-",)
 LENGTH_BANDS = [0, 50, 150, 400, 1000, 10**9]
 LENGTH_LABELS = ["<=50w", "51-150w", "151-400w", "401-1000w", ">1000w"]
@@ -62,6 +72,8 @@ LINEAGE = [
     "prediction_mode",
     "evaluation_role",
     "valid_out_of_sample",
+    "evaluation_regime",
+    "prediction_precedes_observation",
     "metrics_version",
 ]
 
@@ -114,9 +126,14 @@ def build_outcomes(root: str | Path) -> pd.DataFrame:
         "stop_reason",
         "response_status",
     ]
-    frame = predictions.rename(columns={"created_at_utc": "timestamp_prediction_created"}).merge(
-        obs[obs_cols], on="request_id", how="inner"
-    )
+    frame = predictions.rename(
+        columns={
+            "created_at_utc": "timestamp_prediction_created",
+            # The count the forecast used; the measured preflight table is joined below.
+            "preflight_input_tokens": "forecast_preflight_input_tokens",
+            "preflight_method": "forecast_preflight_method",
+        }
+    ).merge(obs[obs_cols], on="request_id", how="inner")
     requests = layout.read_frame("requests").drop_duplicates("sample_id")
     request_cols = [
         "sample_id",
@@ -151,7 +168,22 @@ def build_outcomes(root: str | Path) -> pd.DataFrame:
     frame["prediction_interval_upper"] = frame["upper_bound"].astype(float)
     frame["prediction_mode"] = frame["prediction_mode"].fillna("retrospective")
     untrained = frame["predictor_version"].astype(str).str.startswith(UNTRAINED_PREFIXES)
-    frame["valid_out_of_sample"] = frame["prediction_mode"].isin(OUT_OF_SAMPLE_MODES) | untrained
+    created = pd.to_datetime(frame["timestamp_prediction_created"], utc=True)
+    observed = pd.to_datetime(frame["timestamp_actual_observed"], utc=True)
+    frame["prediction_precedes_observation"] = created < observed
+    live = frame["prediction_mode"] == "live_shadow_preflight"
+    frame["valid_out_of_sample"] = (
+        (frame["prediction_mode"].isin(OUT_OF_SAMPLE_MODES) | untrained)
+        # A live shadow forecast only counts if it really predates the observation.
+        & (~live | frame["prediction_precedes_observation"])
+    )
+    frame["evaluation_regime"] = (
+        frame["prediction_mode"]
+        .map(REGIMES)
+        .fillna(
+            pd.Series(np.where(untrained, "untrained_heuristic", "in_sample"), index=frame.index)
+        )
+    )
     frame["metrics_version"] = METRICS_VERSION
     frame["provider_model"] = frame["provider"] + "/" + frame["requested_model"]
     frame["effort"] = frame["requested_effort"].fillna("unset")

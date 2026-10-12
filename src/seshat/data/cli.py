@@ -278,6 +278,15 @@ def _parser() -> argparse.ArgumentParser:
         help="Weight categories by this predictor's realized errors (default: newest registered "
         "forecaster, else the baseline)",
     )
+    plan.add_argument(
+        "--shadow-artifact",
+        help="Local forecaster.json to run as an observation-only shadow forecaster before each "
+        "dispatch; only its SHA-256 and versions are written to the config",
+    )
+    plan.add_argument(
+        "--shadow-artifact-ref",
+        help="Path of that artifact inside the private store (default models/<version>/...)",
+    )
     plan.add_argument("--output", required=True, help="Collector config to write (YAML)")
     plan.add_argument("--report", help="Dry-run report path (Markdown; JSON alongside)")
 
@@ -671,6 +680,21 @@ def _dispatch(args: argparse.Namespace) -> int:
             max_censor_rate=args.max_censor_rate,
             segment_quality=segment_quality,
         )
+        if args.shadow_artifact:
+            import hashlib
+
+            artifact_bytes = Path(args.shadow_artifact).read_bytes()
+            artifact = json.loads(artifact_bytes)
+            batch["config"]["shadow"] = {
+                "artifact_ref": args.shadow_artifact_ref
+                or f"models/{artifact['predictor_version']}/forecaster.json",
+                "artifact_sha256": hashlib.sha256(artifact_bytes).hexdigest(),
+                "predictor_version": artifact["predictor_version"],
+                "calibration_version": artifact["calibration_version"],
+                "dataset_version": artifact["dataset_version"],
+                "required": True,
+            }
+            batch["report"]["shadow"] = batch["config"]["shadow"]
         CollectionConfig.model_validate(batch["config"])  # fail before writing
         output = Path(args.output)
         output.parent.mkdir(parents=True, exist_ok=True)

@@ -274,6 +274,7 @@ def test_normalization_labels_fixtures_and_is_reproducible(
         "requests": len(plan.samples),
         "preflight": len(plan.samples),
         "observations": len(plan.samples),
+        "shadow_predictions": 0,  # no shadow forecaster configured
     }
     layout = StorageLayout(config.storage.root)
     before = layout.read_frame("observations").sort_values("observation_id").reset_index(drop=True)

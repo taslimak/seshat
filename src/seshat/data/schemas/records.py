@@ -330,6 +330,11 @@ class PredictionRecord(_Record):
     dataset_version: str | None = None
     feature_set_version: str | None = None
     code_revision: str | None = None
+    expected_absolute_error_tokens: float | None = Field(default=None, ge=0)
+    preflight_input_tokens: int | None = Field(default=None, ge=0)
+    preflight_method: str | None = None
+    pricing_version: str | None = None
+    artifact_sha256: str | None = None
 
     @model_validator(mode="after")
     def _bounds(self) -> PredictionRecord:

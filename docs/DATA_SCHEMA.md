@@ -207,8 +207,8 @@ Seshat predictions. Never observations or labels.
 | `upper_bound` | `upper_bound` | `int64` | Upper interval bound. |
 | `confidence` | `confidence` | `double` | Predictor-reported confidence (not calibrated unless interval_calibrated). |
 | `interval_calibrated` | `interval_calibrated` | `bool` | Whether the interval was empirically calibrated. |
-| `prediction_mode` | `prediction_mode` | `string` | preflight (before dispatch) \| backtest_holdout \| backtest_out_of_fold \| retrospective (stored request re-scored; in-sample unless stated). |
-| `evaluation_role` | `evaluation_role` | `string` | protected_test \| cross_validation \| none: how the row may be used in quality reporting. |
+| `prediction_mode` | `prediction_mode` | `string` | live_shadow_preflight (observation-only forecast persisted before dispatch) \| backtest_holdout \| backtest_out_of_fold \| retrospective (stored request re-scored; in-sample unless the predictor is an untrained heuristic). |
+| `evaluation_role` | `evaluation_role` | `string` | forward_validation \| protected_test \| cross_validation \| none: how the row may be used in quality reporting. |
 | `base_predicted_output_tokens` | `base_predicted_output_tokens` | `int64` | Point forecast before bias correction (stage A). |
 | `confidence_level` | `confidence_level` | `double` | Nominal coverage targeted by the calibrated interval (e.g. 0.90). Not a probability that the point forecast is right. |
 | `lower_margin_tokens` | `lower_margin_tokens` | `int64` | Point forecast minus interval lower bound. |
@@ -225,6 +225,11 @@ Seshat predictions. Never observations or labels.
 | `dataset_version` | `dataset_version` | `string` | Dataset the predictor was trained on (hash of observation ids). |
 | `feature_set_version` | `feature_set_version` | `string` | Model feature definition version. |
 | `code_revision` | `code_revision` | `string` | Git commit that produced the prediction. |
+| `expected_absolute_error_tokens` | `expected_absolute_error_tokens` | `double` | Model-implied expected \|realized - forecast\| in tokens (pre-inference). |
+| `preflight_input_tokens` | `preflight_input_tokens` | `int64` | Input tokens counted before dispatch. Never authoritative usage. |
+| `preflight_method` | `preflight_method` | `string` | provider_native \| local_tokenizer \| statistical_approximation \| unavailable. |
+| `pricing_version` | `pricing_version` | `string` | Price-table version used (configs/pricing/*.json). |
+| `artifact_sha256` | `artifact_sha256` | `string` | SHA-256 of the forecaster artifact that produced a shadow prediction. |
 
 ## Normalized usage
 

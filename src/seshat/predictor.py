@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from seshat.data.schemas.request import LLMRequest
 from seshat.features import PromptFeatures, extract_prompt_features
 
 
@@ -38,6 +39,11 @@ class Prediction:
     uncertainty_model_version: str | None = None
     calibration_version: str | None = None
     dataset_version: str | None = None
+    feature_set_version: str | None = None
+    base_predicted_output_tokens: int | None = None
+    preflight_input_tokens: int | None = None
+    preflight_method: str | None = None
+    pricing_version: str | None = None
 
 
 def _margins(point: int, lower: int, upper: int) -> dict[str, float | int | None]:
@@ -177,50 +183,77 @@ class CalibratedPredictor:
         max_output_tokens: int | None = None,
         system: str | None = None,
     ) -> Prediction:
-        import math
+        """API entry point: builds the single-turn request, then :meth:`predict_request`."""
+        from seshat.modeling.features import request_from_prompt
 
-        import numpy as np
-        import pandas as pd
-
-        from seshat.data.pricing import PriceTable
-        from seshat.modeling.features import model_features, request_from_prompt
-        from seshat.modeling.pipeline import SEGMENT_COLUMNS
-        from seshat.providers.base import approximate_preflight
-
-        provider = _provider_for(model)
         request = request_from_prompt(
             prompt,
-            provider=provider,
+            provider=_provider_for(model),
             model=model,
             effort=None if effort == "auto" else effort,
             system=system,
             max_output_tokens=max_output_tokens,
         )
+        return self.predict_request(request)
+
+    def predict_request(
+        self,
+        request: LLMRequest,
+        *,
+        preflight_input_tokens: int | None = None,
+        preflight_method: str | None = None,
+    ) -> Prediction:
+        """Forecast for the exact request about to be sent (pre-inference only).
+
+        Inputs are the request itself and, optionally, an already-measured preflight
+        input count (e.g. the provider-native count taken by the collector). That count
+        is the single authoritative input figure for total-token and cost forecasts;
+        only when it is absent is the ~4 chars/token approximation used, and the
+        returned ``preflight_method`` says which. The request is not modified.
+        """
+        import math
+        from datetime import date
+
+        import numpy as np
+        import pandas as pd
+
+        from seshat.data.pricing import PriceTable
+        from seshat.modeling.features import model_features
+        from seshat.modeling.pipeline import SEGMENT_COLUMNS
+        from seshat.providers.base import approximate_preflight
+
         frame = pd.DataFrame([model_features(request)])
         mu, sigma = self.model.predict_log(frame)
+        base = int(round(max(math.expm1(float(mu[0])), 0.0)))
         segments = {c: frame[c].astype(str).to_numpy() for c in SEGMENT_COLUMNS}
         if self.bias is not None:
             mu = mu + self.bias.delta(segments)
         q_lo, q_hi = self.calibrator.quantiles(segments, 1)
-        cap = float(max_output_tokens) if max_output_tokens else math.inf
+        max_output = request.params.max_output_tokens
+        cap = float(max_output) if max_output else math.inf
         point = int(round(min(max(math.expm1(float(mu[0])), 0.0), cap)))
         lower = int(round(min(max(math.expm1(float(mu[0] + q_lo[0] * sigma[0])), 0.0), point)))
         upper = int(round(min(max(math.expm1(float(mu[0] + q_hi[0] * sigma[0])), point), cap)))
         # E|Y - median| for a log-normal is not closed-form; Monte Carlo on the log scale.
         draws = np.expm1(mu[0] + sigma[0] * np.random.default_rng(0).standard_normal(4000))
         expected_abs = float(np.mean(np.abs(np.minimum(draws, cap) - point)))
-        input_tokens = approximate_preflight(request, provider).input_tokens or 0
-        total = input_tokens + point
+        if preflight_input_tokens is None:
+            approx = approximate_preflight(request, request.provider)
+            input_tokens = approx.input_tokens or 0
+            method = preflight_method or approx.method.value
+        else:
+            input_tokens = int(preflight_input_tokens)
+            method = preflight_method or "supplied"
         cost: float | None = None
+        pricing_version: str | None = None
         try:
-            from datetime import date
-
-            entry = PriceTable.load().lookup(provider, model, date.today())
+            entry = PriceTable.load().lookup(request.provider, request.model, date.today())
             if entry is not None:
+                pricing_version = entry.pricing_version
                 cost = round(
                     (input_tokens * float(entry.rates.input) + point * float(entry.rates.output))
                     / 1e6,
-                    6,
+                    9,
                 )
         except (OSError, ValueError):
             cost = None
@@ -234,11 +267,16 @@ class CalibratedPredictor:
             interval_calibrated=True,
             confidence_level=level,
             expected_absolute_error_tokens=round(expected_abs, 1),
-            predicted_total_tokens=total,
+            predicted_total_tokens=input_tokens + point,
             predicted_cost_usd=cost,
             uncertainty_model_version=str(self.artifact["uncertainty_model_version"]),
             calibration_version=str(self.artifact["calibration_version"]),
             dataset_version=str(self.artifact["dataset_version"]),
+            feature_set_version=str(self.artifact["feature_set_version"]),
+            base_predicted_output_tokens=base,
+            preflight_input_tokens=input_tokens,
+            preflight_method=method,
+            pricing_version=pricing_version,
             **_margins(point, lower, upper),  # type: ignore[arg-type]
         )
 

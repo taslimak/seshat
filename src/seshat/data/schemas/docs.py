@@ -150,8 +150,8 @@ FIELD_DOCS: dict[str, str] = {
     "upper_bound": "Upper interval bound.",
     "confidence": "Predictor-reported confidence (not calibrated unless interval_calibrated).",
     "interval_calibrated": "Whether the interval was empirically calibrated.",
-    "prediction_mode": "preflight (before dispatch) | backtest_holdout | backtest_out_of_fold | retrospective (stored request re-scored; in-sample unless stated).",
-    "evaluation_role": "protected_test | cross_validation | none: how the row may be used in quality reporting.",
+    "prediction_mode": "live_shadow_preflight (observation-only forecast persisted before dispatch) | backtest_holdout | backtest_out_of_fold | retrospective (stored request re-scored; in-sample unless the predictor is an untrained heuristic).",
+    "evaluation_role": "forward_validation | protected_test | cross_validation | none: how the row may be used in quality reporting.",
     "base_predicted_output_tokens": "Point forecast before bias correction (stage A).",
     "confidence_level": "Nominal coverage targeted by the calibrated interval (e.g. 0.90). Not a probability that the point forecast is right.",
     "lower_margin_tokens": "Point forecast minus interval lower bound.",
@@ -168,6 +168,8 @@ FIELD_DOCS: dict[str, str] = {
     "dataset_version": "Dataset the predictor was trained on (hash of observation ids).",
     "feature_set_version": "Model feature definition version.",
     "code_revision": "Git commit that produced the prediction.",
+    "expected_absolute_error_tokens": "Model-implied expected |realized - forecast| in tokens (pre-inference).",
+    "artifact_sha256": "SHA-256 of the forecaster artifact that produced a shadow prediction.",
 }
 
 TABLES: list[tuple[str, type[BaseModel], str]] = [

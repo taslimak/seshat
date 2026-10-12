@@ -122,6 +122,7 @@ class Collector:
         adapter_factory: Callable[[str], ProviderAdapter] | None = None,
         price_table: PriceTable | None = None,
         sleep: Callable[[float], Any] | None = None,
+        shadow: Any | None = None,
     ) -> None:
         self.config = config
         self.plan = plan
@@ -195,6 +196,14 @@ class Collector:
         self._per_provider = {
             p: asyncio.Semaphore(config.execution.per_provider_concurrency) for p in providers
         }
+        # Observation-only shadow forecaster (forward validation). Built from the reviewed
+        # config for executing runs; a required shadow that cannot load stops the run
+        # before any request is sent. Dry runs never score.
+        self.shadow = shadow
+        if self.shadow is None and config.shadow is not None and mode != "dry_run":
+            from seshat.modeling.shadow import ShadowForecaster
+
+            self.shadow = ShadowForecaster(config.shadow)
         self._stop_reason: str | None = None
         self._dispatched = 0
         self._stats: dict[str, Counter[str]] = {}
@@ -412,6 +421,36 @@ class Collector:
                     EventType.PREFLIGHT, sample_id=sid, run_id=self.run_id, result=preflight_dict
                 )
             preflight = PreflightResult.model_validate(preflight_dict)
+            if self.shadow is not None and (state is None or state.shadow is None):
+                # Forecast BEFORE dispatch, from the planned request + preflight only.
+                try:
+                    shadow_payload = await asyncio.to_thread(
+                        self.shadow.forecast, sample.request, preflight_dict
+                    )
+                except Exception as exc:  # noqa: BLE001 - never pretend a forecast exists
+                    self.events.append(
+                        EventType.SHADOW_FAILED,
+                        sample_id=sid,
+                        run_id=self.run_id,
+                        message=f"{type(exc).__name__}: {exc}"[:300],
+                    )
+                    if self.config.shadow is None or self.config.shadow.required:
+                        self.events.append(
+                            EventType.SKIPPED,
+                            sample_id=sid,
+                            run_id=self.run_id,
+                            reason="shadow_prediction_failed",
+                        )
+                        stats["skipped"] += 1
+                        return
+                else:
+                    self.events.append(
+                        EventType.SHADOW_PREDICTION,
+                        sample_id=sid,
+                        request_id=sample.request_id,
+                        run_id=self.run_id,
+                        prediction=shadow_payload,
+                    )
             attempt = state.attempts if state is not None else 0
             failures_this_sample = 0
             while True:

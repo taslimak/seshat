@@ -90,8 +90,8 @@ def quality_snapshots(outcomes: pd.DataFrame, *, as_of: datetime | None = None) 
     valid = outcomes[outcomes["valid_out_of_sample"].astype(bool)] if len(outcomes) else outcomes
     if len(valid):
         valid = valid.assign(calibration_version=valid["calibration_version"].fillna("none"))
-    for (version, _cal, origin), group in valid.groupby(
-        ["predictor_version", "calibration_version", "label_origin"]
+    for (version, _cal, origin, regime), group in valid.groupby(
+        ["predictor_version", "calibration_version", "label_origin", "evaluation_regime"]
     ):
         meta = group.iloc[0]
         for window, part in _windows(group, as_of):
@@ -111,6 +111,7 @@ def quality_snapshots(outcomes: pd.DataFrame, *, as_of: datetime | None = None) 
                             "uncertainty_model_version": meta.get("uncertainty_model_version"),
                             "calibration_version": meta.get("calibration_version"),
                             "label_origin": str(origin),
+                            "evaluation_regime": str(regime),
                             "window": window,
                             "slice_dims": "+".join(dims) or "global",
                             "slice_key": "|".join(

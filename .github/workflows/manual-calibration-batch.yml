@@ -61,13 +61,36 @@ jobs:
           test -n "${SESHAT_PROMPT_HASH_KEY:-}" || { echo "Missing hash key"; exit 1; }
       - name: Install Seshat
         run: python -m pip install -e ".[data,providers]"
+      - name: Fetch shadow forecaster from the private store (runner-only, digest-checked)
+        id: shadow
+        env:
+          CONFIG_PATH: ${{ inputs.config_path }}
+          GH_TOKEN: ${{ secrets.SESHAT_STORE_READ_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ref=""
+          if [ -n "$CONFIG_PATH" ]; then
+            ref=$(python -c "import sys,yaml;c=yaml.safe_load(open(sys.argv[1].strip()));print((c.get('shadow') or {}).get('artifact_ref',''))" "$CONFIG_PATH")
+          fi
+          if [ -z "$ref" ]; then echo "path=" >> "$GITHUB_OUTPUT"; exit 0; fi
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "Shadow evaluation required but SESHAT_STORE_READ_TOKEN is not configured; no paid request sent."
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/shadow"   # outside data/, never uploaded
+          gh api -H "Accept: application/vnd.github.raw" \
+            "repos/taslimak/seshat-data/contents/${ref}" > "$RUNNER_TEMP/shadow/forecaster.json"
+          echo "path=$RUNNER_TEMP/shadow/forecaster.json" >> "$GITHUB_OUTPUT"
       - name: Build unique calibration batch
         env:
           CONFIG_PATH: ${{ inputs.config_path }}
+          SHADOW_PATH: ${{ steps.shadow.outputs.path }}
         run: |
           if [ -n "$CONFIG_PATH" ]; then
             python -m scripts.use_batch_config --config "$CONFIG_PATH" \
               --provider "$SESHAT_PROVIDER" --model "$SESHAT_MODEL" \
+              ${SHADOW_PATH:+--shadow-artifact "$SHADOW_PATH"} \
               --output data/calibration.yml
           else
             python -m scripts.prepare_calibration_campaign \
