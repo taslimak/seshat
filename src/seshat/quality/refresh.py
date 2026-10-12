@@ -163,9 +163,38 @@ def refresh_quality(root: str | Path, *, as_of: datetime | None = None) -> dict[
                 render_run_report(part, f"Run quality: {experiment} · {version}"), encoding="utf-8"
             )
     summary["drift"] = {v: d["status"] for v, d in drift.items()}
+    summary["forward_validation"] = write_forward_reports(base, outcomes)
     summary["retraining"] = retraining_due(base, outcomes, drift)
     write_json(base / QUALITY / "summary.json", summary)
     return summary
+
+
+def write_forward_reports(root: Path, outcomes: pd.DataFrame) -> dict[str, Any]:
+    """Per trained predictor: forward shadow vs backtest regimes (never pooled)."""
+    from seshat.quality.forward import forward_validation_report, render_forward_markdown
+
+    predictions = StorageLayout(root).read_frame("predictions")
+    live = (
+        predictions[predictions["prediction_mode"] == "live_shadow_preflight"]
+        if not predictions.empty and "prediction_mode" in predictions
+        else predictions
+    )
+    out: dict[str, Any] = {}
+    target = root / QUALITY / "forward_validation"
+    for version in sorted(outcomes["predictor_version"].unique()):
+        if str(version).startswith("baseline-"):
+            continue
+        n_live = int((live["predictor_version"] == version).sum()) if len(live) else 0
+        report = forward_validation_report(outcomes, str(version), n_live_predictions=n_live)
+        write_json(target / f"{_safe(str(version))}.json", report)
+        (target / f"{_safe(str(version))}.md").write_text(
+            render_forward_markdown(report), encoding="utf-8"
+        )
+        out[str(version)] = {
+            "live_shadow_predictions": n_live,
+            "matched": report["matched_live_shadow_observations"],
+        }
+    return out
 
 
 def retraining_due(

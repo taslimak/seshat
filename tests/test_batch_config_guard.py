@@ -118,3 +118,72 @@ def test_batches_that_cannot_finish_in_time_are_refused(tracked: None, cleanup: 
         use_batch_config.prepare(
             str(slow), provider="openai", model="gpt-6.1-sol", run_id="1", data_root="data"
         )
+
+
+def test_shadow_batches_need_native_preflight_and_a_verified_artifact(
+    tracked: None, cleanup: list[Path], tmp_path: Path
+) -> None:
+    import hashlib
+
+    artifact = tmp_path / "forecaster.json"
+    artifact.write_text('{"predictor_version": "v"}')
+    digest = hashlib.sha256(artifact.read_bytes()).hexdigest()
+    shadow = {
+        "artifact_ref": "models/v/forecaster.json",
+        "artifact_sha256": digest,
+        "predictor_version": "v",
+        "calibration_version": "c",
+        "dataset_version": "d",
+    }
+    approx = _write(
+        "_test_shadow_approx.yaml", shadow=shadow, execution={"preflight": "approximate"}
+    )
+    cleanup.append(approx)
+    with pytest.raises(ValueError, match="preflight: native"):
+        use_batch_config.prepare(
+            str(approx),
+            provider="openai",
+            model="gpt-6.1-sol",
+            run_id="1",
+            data_root="data",
+            shadow_artifact=str(artifact),
+        )
+    native = _write("_test_shadow_native.yaml", shadow=shadow, execution={"preflight": "native"})
+    cleanup.append(native)
+    with pytest.raises(ValueError, match="no paid request"):
+        use_batch_config.prepare(
+            str(native), provider="openai", model="gpt-6.1-sol", run_id="1", data_root="data"
+        )
+    other = tmp_path / "other.json"
+    other.write_text("{}")
+    with pytest.raises(ValueError, match="digest"):
+        use_batch_config.prepare(
+            str(native),
+            provider="openai",
+            model="gpt-6.1-sol",
+            run_id="1",
+            data_root="data",
+            shadow_artifact=str(other),
+        )
+    config = use_batch_config.prepare(
+        str(native),
+        provider="openai",
+        model="gpt-6.1-sol",
+        run_id="1",
+        data_root="data",
+        shadow_artifact=str(artifact),
+    )
+    assert config["shadow"]["artifact_path"] == str(artifact.resolve())  # type: ignore[index]
+
+
+def test_reviewed_batch_is_a_native_shadow_run() -> None:
+    config = yaml.safe_load(
+        Path("configs/experiments/batches/adaptive_20261011b.yaml").read_text(encoding="utf-8")
+    )
+    assert config["execution"]["preflight"] == "native"
+    assert config["shadow"]["predictor_version"] == "cln-b0d10f58ce"
+    assert config["shadow"]["calibration_version"] == "cal-2fe70064b6"
+    assert config["shadow"]["dataset_version"] == "ds-8def61fb7ca4"
+    assert config["shadow"]["required"] is True
+    assert "artifact_path" not in config["shadow"]  # never committed
+    assert config["budget"]["max_cost_usd"] == "2.00"

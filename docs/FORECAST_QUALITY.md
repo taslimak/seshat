@@ -157,3 +157,53 @@ Flags need ≥ 30 outcomes per side and p < 0.01; otherwise `insufficient_data`.
   retraining decisions only.
 * `label_origin` separates real from synthetic outcomes everywhere; synthetic
   outcomes never train, calibrate or appear in real-world reporting.
+
+## Live shadow evaluation (forward validation)
+
+A batch config with a `shadow:` block runs an **observation-only** forecaster on
+every paid request:
+
+```
+request -> provider-native input count (preflight) -> shadow forecast + confidence margin
+        -> shadow_prediction event (persisted) -> dispatch -> response -> observation
+        -> PredictionRecord (live_shadow_preflight / forward_validation) -> outcomes
+```
+
+* **Pre-inference only.** `CalibratedPredictor.predict_request(request,
+  preflight_input_tokens=…)` sees the planned request (a deep copy) and the
+  preflight result — nothing from the response. Training and serving share
+  `model_features`.
+* **One input count.** The provider-native preflight count is passed to the
+  forecaster and used for `predicted_total_tokens` and `predicted_cost_usd`. If
+  native counting fails, the approximation is used and labelled
+  `approximate_fallback_after_native_failure` — never `provider_native`.
+* **Persisted before dispatch.** The forecast is an event in `events.jsonl`
+  written before `request_dispatched`; normalization keeps it only if its
+  timestamp precedes the first dispatch, and outcomes mark it valid only if it
+  precedes the observation (`prediction_precedes_observation`).
+* **No effect on execution.** Request, cap, model, routing and budget are
+  unchanged. If a *required* shadow forecast cannot be produced, that request is
+  skipped rather than run without a forecast; an unverifiable artifact stops the
+  run before any request.
+* **Never activated.** The API keeps the baseline unless an operator sets
+  `SESHAT_FORECASTER_ARTIFACT`.
+* **Artifact handling.** The public config pins `artifact_sha256` and versions;
+  the workflow fetches `forecaster.json` from the private store with the
+  read-only secret `SESHAT_STORE_READ_TOKEN` into `$RUNNER_TEMP` (outside the
+  uploaded `data/`), verifies the digest, and refuses to run without it.
+
+Prediction modes and evaluation regimes (never pooled):
+
+| `prediction_mode` | `evaluation_role` | `evaluation_regime` | Meaning |
+|---|---|---|---|
+| `live_shadow_preflight` | `forward_validation` | `true_forward_shadow` | forecast persisted before the request ran |
+| `backtest_out_of_fold` | `cross_validation` | `out_of_fold_backtest` | retrospective, model did not see the row |
+| `backtest_holdout` | `protected_test` | `protected_test` | retrospective, protected test set |
+| `retrospective` | – | `untrained_heuristic` / `in_sample` | re-scored stored request |
+
+`quality/forward_validation/<predictor>.{json,md}` reports the three regimes side
+by side (MAE, median AE, WAPE, median APE, sMAPE, RMSE, bias, p50/p90/p95,
+under/over-prediction, catastrophic rates, nominal vs actual coverage, margins,
+cost WAPE, preflight input error) with slices by effort, category, output band and
+prompt-size band. Only `true_forward_shadow` answers "how well did Seshat predict
+new requests before they ran?".

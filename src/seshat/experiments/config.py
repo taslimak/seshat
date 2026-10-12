@@ -132,6 +132,24 @@ class PrivacyConfig(_Strict):
     store_response_text: bool = False
 
 
+class ShadowConfig(_Strict):
+    """Observation-only forecaster scored before every dispatch (forward validation).
+
+    The artifact is resolved at run time (``artifact_path``, never committed to this
+    public repository) and must match the reviewed ``artifact_sha256`` and versions.
+    The shadow forecast never changes the request, cap, model, routing or budget.
+    """
+
+    artifact_ref: str = Field(min_length=1)  # location in the private store
+    artifact_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    predictor_version: str = Field(min_length=1)
+    calibration_version: str = Field(min_length=1)
+    dataset_version: str = Field(min_length=1)
+    artifact_path: str | None = None  # set by the workflow on the runner only
+    # Required: a paid request is not dispatched without its pre-dispatch forecast.
+    required: bool = True
+
+
 class StorageConfig(_Strict):
     root: str = "data"
 
@@ -149,6 +167,7 @@ class CollectionConfig(_Strict):
     execution: ExecutionConfig = Field(default_factory=ExecutionConfig)
     privacy: PrivacyConfig = Field(default_factory=PrivacyConfig)
     storage: StorageConfig = Field(default_factory=StorageConfig)
+    shadow: ShadowConfig | None = None
 
     def config_hash(self) -> str:
         canonical = json.dumps(self.model_dump(mode="json"), sort_keys=True, separators=(",", ":"))

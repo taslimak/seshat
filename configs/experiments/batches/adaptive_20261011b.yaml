@@ -92,10 +92,17 @@ execution:
   per_provider_concurrency: 4
   timeout_seconds: 180
   max_retries: 0
-  preflight: approximate
+  preflight: native
   rate_limits:
     openai:
       requests_per_minute: 30
 privacy:
   store_prompt_text: false
   store_response_text: false
+shadow:
+  artifact_ref: models/cln-b0d10f58ce/forecaster.json
+  artifact_sha256: 758b5e0fd86b19f3d9dc45dc33c22caf6dcfd467d023c8c00644668e1c0bc656
+  predictor_version: cln-b0d10f58ce
+  calibration_version: cal-2fe70064b6
+  dataset_version: ds-8def61fb7ca4
+  required: true

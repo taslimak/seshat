@@ -11,6 +11,7 @@ No API calls are made here.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import os
 import subprocess
 from decimal import Decimal
@@ -28,7 +29,13 @@ MAX_PACED_MINUTES = 90
 
 
 def prepare(
-    config_path: str, *, provider: str, model: str, run_id: str, data_root: str
+    config_path: str,
+    *,
+    provider: str,
+    model: str,
+    run_id: str,
+    data_root: str,
+    shadow_artifact: str | None = None,
 ) -> dict[str, object]:
     cleaned = config_path.strip().strip("'\"")
     path = Path(cleaned)
@@ -73,6 +80,22 @@ def prepare(
             f"{config.budget.max_requests / slowest:.0f} min, over the {MAX_PACED_MINUTES} min "
             "the workflow allows; raise requests_per_minute or split the batch"
         )
+    if config.shadow is not None:
+        # Forward validation: native preflight + a verified, reviewed shadow artifact.
+        if config.execution.preflight != "native":
+            raise ValueError("Shadow-evaluation batches must use execution.preflight: native")
+        if not shadow_artifact or not Path(shadow_artifact).is_file():
+            raise ValueError(
+                f"Shadow forecaster {config.shadow.predictor_version} is required but its "
+                f"artifact ({config.shadow.artifact_ref}) was not provided; no paid request "
+                "will be sent (configure SESHAT_STORE_READ_TOKEN)"
+            )
+        digest = hashlib.sha256(Path(shadow_artifact).read_bytes()).hexdigest()
+        if digest != config.shadow.artifact_sha256:
+            raise ValueError(
+                f"Shadow artifact digest {digest} != reviewed {config.shadow.artifact_sha256}"
+            )
+        raw["shadow"]["artifact_path"] = str(Path(shadow_artifact).resolve())
     if not run_id.isdecimal():
         raise ValueError("Expected a numeric GitHub run id")
     raw["experiment_id"] = f"{config.experiment_id}_r{run_id}"
@@ -89,6 +112,7 @@ def main() -> None:
     parser.add_argument("--run-id", default=os.environ.get("GITHUB_RUN_ID", ""))
     parser.add_argument("--root", default="data")
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--shadow-artifact", help="Verified shadow forecaster (runner-only path)")
     args = parser.parse_args()
     config = prepare(
         args.config,
@@ -96,6 +120,7 @@ def main() -> None:
         model=args.model,
         run_id=args.run_id,
         data_root=args.root,
+        shadow_artifact=args.shadow_artifact,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(yaml.safe_dump(config, sort_keys=False), encoding="utf-8")

@@ -76,3 +76,12 @@ this with experimental design rather than volume:
    to `experiment_id` so a re-dispatch never resumes another run's samples.
 5. The store repository's sync workflow (every 6 h, or dispatched) imports the
    artifact and refreshes readiness, quality and spend reports.
+
+## Live shadow evaluation (from `adaptive_20261011b`)
+
+`plan-batch --shadow-artifact <store>/models/<version>/forecaster.json` pins an
+observation-only forecaster (SHA-256 + versions) and native preflight in the
+batch config. One-time setup: a fine-grained token with **Contents: read** on
+`taslimak/seshat-data` only, stored as the Actions secret
+`SESHAT_STORE_READ_TOKEN` in `taslimak/seshat`. Without it, a shadow batch fails
+before any paid request. See [FORECAST_QUALITY.md](FORECAST_QUALITY.md#live-shadow-evaluation-forward-validation).

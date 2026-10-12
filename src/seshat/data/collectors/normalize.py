@@ -37,7 +37,12 @@ from seshat.data.schemas.enums import (
     ResponseStatus,
     SourceType,
 )
-from seshat.data.schemas.records import ObservationRecord, PreflightRecord, RequestRecord
+from seshat.data.schemas.records import (
+    ObservationRecord,
+    PredictionRecord,
+    PreflightRecord,
+    RequestRecord,
+)
 from seshat.experiments.design import PlannedSample
 from seshat.providers.base import PreflightResult, ProviderResponse
 from seshat.providers.catalog import Catalog
@@ -319,14 +324,17 @@ def normalize_experiment(
     requests, preflights, observations = build_records(
         samples, events, catalog=catalog, prices=prices, policy=policy, storage_root=layout.root
     )
+    predictions = build_shadow_predictions(samples, events)
     source = f"experiment-{experiment_id}"
     layout.replace_source("requests", source, requests)
     layout.replace_source("preflight", source, preflights)
     layout.replace_source("observations", source, observations)
+    layout.replace_source("predictions", source, predictions)
     counts = {
         "requests": len(requests),
         "preflight": len(preflights),
         "observations": len(observations),
+        "shadow_predictions": len(predictions),
     }
     write_json(
         exp_dir / "normalization.json",
@@ -337,3 +345,75 @@ def normalize_experiment(
         },
     )
     return counts
+
+
+def build_shadow_predictions(
+    samples: list[PlannedSample], events: list[dict[str, Any]]
+) -> list[PredictionRecord]:
+    """Canonical prediction rows from pre-dispatch ``shadow_prediction`` events.
+
+    Only events whose forecast timestamp precedes the sample's first dispatch are
+    accepted as live shadow predictions; anything else would not be pre-inference.
+    """
+    from seshat.data.collectors.events import EventType
+
+    request_ids = {str(s.sample_id): s.request_id for s in samples}
+    first_dispatch: dict[str, str] = {}
+    shadows: dict[str, dict[str, Any]] = {}
+    for event in events:
+        sid = event.get("sample_id")
+        if not sid:
+            continue
+        if event["event"] == EventType.DISPATCHED and sid not in first_dispatch:
+            first_dispatch[sid] = str(event["at"])
+        elif event["event"] == EventType.SHADOW_PREDICTION and sid not in shadows:
+            shadows[sid] = event
+    records: list[PredictionRecord] = []
+    for sid, event in sorted(shadows.items()):
+        if sid not in request_ids:
+            continue
+        p = event["prediction"]
+        created = datetime.fromisoformat(str(p["created_at_utc"]))
+        dispatched = first_dispatch.get(sid)
+        if dispatched is not None and created >= datetime.fromisoformat(dispatched):
+            continue  # not a pre-dispatch forecast: never recorded as live shadow
+        request_id = request_ids[sid]
+        cost = p.get("predicted_cost_usd")
+        records.append(
+            PredictionRecord(
+                prediction_id=(
+                    f"pred_{request_id}_{p['predictor_version']}_{p['calibration_version']}_shadow"
+                ),
+                request_id=request_id,
+                created_at_utc=created,
+                predictor_version=str(p["predictor_version"]),
+                predicted_output_tokens=int(p["predicted_output_tokens"]),
+                lower_bound=int(p["lower_bound"]),
+                upper_bound=int(p["upper_bound"]),
+                confidence=float(p["confidence"]),
+                interval_calibrated=bool(p["interval_calibrated"]),
+                prediction_mode=str(p["prediction_mode"]),
+                evaluation_role=str(p["evaluation_role"]),
+                base_predicted_output_tokens=p.get("base_predicted_output_tokens"),
+                confidence_level=p.get("confidence_level"),
+                lower_margin_tokens=p.get("lower_margin_tokens"),
+                upper_margin_tokens=p.get("upper_margin_tokens"),
+                confidence_margin_tokens=p.get("confidence_margin_tokens"),
+                lower_margin_pct=p.get("lower_margin_pct"),
+                upper_margin_pct=p.get("upper_margin_pct"),
+                confidence_margin_pct=p.get("confidence_margin_pct"),
+                predicted_total_tokens=p.get("predicted_total_tokens"),
+                predicted_cost_usd=None if cost is None else Decimal(str(cost)),
+                uncertainty_model_version=p.get("uncertainty_model_version"),
+                calibration_version=p.get("calibration_version"),
+                dataset_version=p.get("dataset_version"),
+                feature_set_version=p.get("feature_set_version"),
+                code_revision=p.get("code_revision"),
+                expected_absolute_error_tokens=p.get("expected_absolute_error_tokens"),
+                preflight_input_tokens=p.get("preflight_input_tokens"),
+                preflight_method=p.get("preflight_source") or p.get("preflight_method"),
+                pricing_version=p.get("pricing_version"),
+                artifact_sha256=p.get("artifact_sha256"),
+            )
+        )
+    return records

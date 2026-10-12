@@ -26,6 +26,9 @@ log = logging.getLogger("seshat.collector")
 class EventType(StrEnum):
     RUN_STARTED = "run_started"
     PREFLIGHT = "preflight"
+    # Observation-only forecast by a shadow model, written before dispatch.
+    SHADOW_PREDICTION = "shadow_prediction"
+    SHADOW_FAILED = "shadow_prediction_failed"
     DISPATCHED = "request_dispatched"
     RESPONSE = "response_received"
     FAILED = "request_failed"
@@ -82,6 +85,7 @@ class SampleState:
     attempts: int = 0
     open_attempt: int | None = None
     preflight: dict[str, Any] | None = None
+    shadow: dict[str, Any] | None = None
     response: dict[str, Any] | None = None
     failures: list[dict[str, Any]] = field(default_factory=list)
     reserved_cost_usd: float = 0.0
@@ -103,6 +107,8 @@ def replay(events: list[dict[str, Any]]) -> dict[str, SampleState]:
         kind = event["event"]
         if kind == EventType.PREFLIGHT:
             state.preflight = event["result"]
+        elif kind == EventType.SHADOW_PREDICTION:
+            state.shadow = event["prediction"]
         elif kind == EventType.DISPATCHED:
             state.attempts = max(state.attempts, int(event["attempt"]))
             state.open_attempt = int(event["attempt"])

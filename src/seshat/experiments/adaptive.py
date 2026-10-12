@@ -426,7 +426,9 @@ def plan_next_batch(
             "per_provider_concurrency": 4,
             "timeout_seconds": 180,
             "max_retries": 0,
-            "preflight": "approximate",
+            # Provider-native counts in live runs (dry runs fall back to the approximation
+            # without calling the provider).
+            "preflight": "native",
             "rate_limits": {provider: {"requests_per_minute": 30}},
         },
         "privacy": {"store_prompt_text": False, "store_response_text": False},
